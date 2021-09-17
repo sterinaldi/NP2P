@@ -34,16 +34,16 @@ g = 20
 true_vals = [mu, sigma, a, 1]
 
 # Samples
-samp_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/posteriors/posterior_functions_gaussian.pkl'
+samp_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/posteriors/posterior_functions_gaussian.pkl' # CHANGEME
 openfile  = open(samp_file, 'rb')
 samples   = pickle.load(openfile)[:4] # subset
 openfile.close()
 
 # Comparison with DPGMM outcome
-rec_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/rec_prob/log_rec_prob_gaussian.txt'
+rec_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/rec_prob/log_rec_prob_gaussian.txt' # CHANGEME
 rec = np.genfromtxt(rec_file, names = True)
 
-out_folder  = '/Users/stefanorinaldi/Documents/parametric/DP'
+out_folder  = '/Users/stefanorinaldi/Documents/parametric/DP' # CHANGEME
 
 names = ['mu1', 'sigma1']
 bounds = [[45,60], [2,10]]
