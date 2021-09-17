@@ -37,7 +37,7 @@ class DirichletProcess(cpnest.model.Model):
         self.n_samps    = len(samples)
         self.labels     = pars
         self.names      = pars + ['a', 'N', 'g']
-        self.bounds     = bounds + [[1, max_a], [5,max_N], [1, max_g]]
+        self.bounds     = bounds + [[1, max_a], [5,max_N], [1e-3, max_g]]
         self.prior_pars = prior_pars
         self.x_min      = x_min
         self.x_max      = x_max
@@ -51,7 +51,7 @@ class DirichletProcess(cpnest.model.Model):
     
         logP = super(DirichletProcess,self).log_prior(x)
         if np.isfinite(logP):
-            logP = -(1/x['a']) #- (1/x['g']) #- self.prior_norm #-np.log(x['N'])  - x['g']# - self.prior_norm
+            logP = -(1/x['a']) - (1/x['g']) #- self.prior_norm #-np.log(x['N'])  - x['g']# - self.prior_norm
             pars = [x[lab] for lab in self.labels]
             logP += self.prior_pars(*pars)
         return logP
@@ -90,7 +90,3 @@ class DirichletProcess(cpnest.model.Model):
 @njit
 def numba_gammaln(x):
   return gammaln_float64(x)
-  
-@jit
-def my_dot(a,b):
-    return np.sum(a*b)
