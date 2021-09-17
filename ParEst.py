@@ -24,58 +24,9 @@ def log_add(x, y): return x+np.log(1.0+np.exp(y-x)) if x >= y else y+np.log(1.0+
 def log_sub(x, y): return x + np.log1p(-np.exp(y-x))
 def log_norm(x, x0, s): return -((x-x0)**2)/(2*s*s) - np.log(np.sqrt(2*np.pi)) - np.log(s)
 
-@jit
-def my_betaln(x, logx, a1, a0):
-    return numba_gammaln(a1 + a0) - numba_gammaln(a1) - numba_gammaln(a0) + (a1-1)*logx + (a0-1)*np.log(1-x)
-
-@jit
-def integrator(p, pmone, ai, a0, g, ns):
-    I =  - np.log(ai)
-    for pi, pm in zip(p,pmone):
-        I = log_add(I, numba_gammaln(a0) - numba_gammaln(ai) - numba_gammaln(a0-ai) + (ai-1)*pi + ((a0-ai)-1)*pm)#(ai-1)*pi)
-    I = I - np.log(1 + ns)
-    return I
-
 def findsubsets(l):
     return np.array([np.log(i) for i in product(*l) if np.abs(np.sum(i)-1)<1e-2])
 
-class DirichletDistribution(cpnest.model.Model):
-    
-    def __init__(self, model, pars, bounds, samples, x_min, x_max, probs, n = 30, prior_pars = lambda x: 0, max_a = 3):
-    
-        super(DirichletDistribution, self).__init__()
-        self.samples    = samples
-        self.labels     = pars
-        self.names      = pars + ['a']
-        self.bounds     = bounds + [[0, max_a]]
-        self.prior_pars = prior_pars
-        self.x_min      = x_min
-        self.x_max      = x_max
-        self.n          = n
-        self.m          = np.linspace(self.x_min, self.x_max, self.n)
-        self.dm         = self.m[1] - self.m[0]
-        self.model      = model
-        self.probs      = np.array(probs)
-    
-    def log_prior(self, x):
-    
-        logP = super(DirichletDistribution,self).log_prior(x)
-        if np.isfinite(logP):
-            logP = - x['a']
-            pars = [x[lab] for lab in self.labels]
-            logP += self.prior_pars(*pars)
-        return logP
-
-    def log_likelihood(self, x):
-
-        pars = [x[lab] for lab in self.labels]
-        base = np.array([self.model(mi, *pars)*self.dm for mi in self.m])
-        base = base/np.sum(base)
-        a = x['a']*base
-        #implemented as in scipy.stats.dirichlet.logpdf() w/o checks
-        lnB = np.sum([numba_gammaln(ai) for ai in a]) - numba_gammaln(np.sum(a))
-        logL = np.sum([- lnB + np.sum((xlogy(a-1, p.T)).T, 0) for p in self.probs])
-        return logL
 
 class DirichletProcess(cpnest.model.Model):
     
@@ -130,8 +81,6 @@ class DirichletProcess(cpnest.model.Model):
         log_a = np.log(c_par)
         g = x['g']
         a = c_par*base/base.sum()
-        #implemented as in scipy.stats.dirichlet.logpdf() w/o checks
-#        lnB = np.sum([numba_gammaln(ai) for ai in a]) - numba_gammaln(np.sum(a))
         gammas = np.sum([numba_gammaln(ai) for ai in a])
         addends = np.array([np.sum(ss*(a-1)) + log_g - log_a - gammas for ss in subset])
         logL = numba_gammaln(c_par) - N*np.log(g + ns) + logsumexp(addends)
