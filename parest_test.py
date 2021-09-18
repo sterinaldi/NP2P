@@ -36,7 +36,7 @@ true_vals = [mu, sigma, a, 1]
 # Samples
 samp_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/posteriors/posterior_functions_gaussian.pkl' # CHANGEME
 openfile  = open(samp_file, 'rb')
-samples   = pickle.load(openfile)[:4] # subset
+samples   = pickle.load(openfile)[-10:] # subset
 openfile.close()
 
 # Comparison with DPGMM outcome
@@ -58,15 +58,17 @@ PE = DirichletProcess(
     x_min = 40,
     x_max = 60,
     prior_pars = logPrior,
-    max_a = 1000,
-    max_g = 1000,
-    max_N = 10
+    max_a = 10000,
+    max_g = 2,
+    max_N = 7,
+    out_folder = out_folder,
+    load_preprocessed = False
     )
 
 work = cpnest.CPNest(PE,
                     verbose = 2,
-                    nlive = 20,
-                    maxmcmc = 100,
+                    nlive = 1000,
+                    maxmcmc = 1000,
                     nthreads = 4,
                     output  = out_folder
                     )
