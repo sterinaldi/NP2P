@@ -86,7 +86,7 @@ class DirichletProcess(cpnest.model.Model):
                 f.close()
         else:
             self.subsets = subsets
-        self.p          = Pool(nthreads)
+#        self.p          = Pool(nthreads)
 
     
     def log_prior(self, x):
