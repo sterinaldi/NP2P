@@ -26,8 +26,16 @@ def log_add(x, y): return x+np.log(1.0+np.exp(y-x)) if x >= y else y+np.log(1.0+
 def log_sub(x, y): return x + np.log1p(-np.exp(y-x))
 def log_norm(x, x0, s): return -((x-x0)**2)/(2*s*s) - np.log(np.sqrt(2*np.pi)) - np.log(s)
 
+def cartesian_product(*arrays):
+    la = len(arrays)
+    dtype = np.result_type(*arrays)
+    arr = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
+        arr[...,i] = a
+    yield arr.reshape(-1, la)
+
 def findsubsets(l):
-    return np.array([np.log(i) for i in product(*l) if np.abs(np.sum(i)-1)<1e-4])
+    return np.array([np.log(i) for i in cartesian_product(*l) if np.abs(np.sum(i)-1)<1e-4])
 
 def preprocess(N_max, samples, x_min, x_max, n_samps, nthreads = 1):
     print('Pre-processing: subsets')
