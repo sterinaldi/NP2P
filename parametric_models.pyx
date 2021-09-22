@@ -34,3 +34,14 @@ def power_law(double x,
 
 def bimodal(double x,double x0,double s0,double x1,double s1, double w):
     return w*_normal(x,x0,s0)+(1.0-w)*_normal(x,x1,s1)
+
+def power_law_peak(double x,
+            double alpha,
+            double x_min,
+            double x_max,
+            double l_min,
+            double l_max,
+            double mu,
+            double s,
+            double w:)
+    return (1-w)*_power_law(x, alpha, x_min, x_max, l_min, l_max) + w*_normal(x,mu,s)

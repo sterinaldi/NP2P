@@ -29,7 +29,7 @@ def log_norm(x, x0, s): return -((x-x0)**2)/(2*s*s) - np.log(np.sqrt(2*np.pi)) -
 def cartesian_product(arrays):
     la = len(arrays)
     dtype = np.result_type(*arrays)
-    arr = np.empty([la] + [len(a) for a in arrays], dtype=dtype)
+    arr = np.empty([la] + [len(a) for a in arrays], dtype='float64')
     for i, a in enumerate(np.ix_(*arrays)):
         arr[i, ...] = a
     yield arr.reshape(la, -1).T
@@ -41,7 +41,6 @@ def preprocess(N_max, samples, x_min, x_max, n_samps, nthreads = 1):
     print('Pre-processing: subsets')
     subsets = {}
     for N in np.arange(2,N_max):
-        init_time = perf_counter()
         m  = np.linspace(x_min, x_max, N)
         dm = m[1] - m[0]
         probs = []
@@ -51,14 +50,9 @@ def preprocess(N_max, samples, x_min, x_max, n_samps, nthreads = 1):
             probs.append(p+np.log(dm))
         probs.append(np.zeros(N))
         probs = np.array([p - logsumexp(p) for p in probs])
-        subset = findsubsets(np.exp(probs.T))
+#        subset = findsubsets(np.exp(probs.T))
+        subset = np.array(probs)
         subsets[N] = subset
-        end_time = perf_counter()
-        seconds = int(end_time - init_time)
-        h = int(seconds/3600.)
-        m = int((seconds%3600)/60)
-        s = int(seconds - h*3600-m*60)
-        print('N = {0}, elapsed time: {1}h {2}m {3}s'.format(N, h, m, s))
     return subsets
 
 class DirichletProcess(cpnest.model.Model):
@@ -70,7 +64,7 @@ class DirichletProcess(cpnest.model.Model):
         self.n_samps    = len(samples)
         self.labels     = pars
         self.names      = pars + ['a', 'N', 'g']
-        self.bounds     = bounds + [[1, max_a], [5,max_N], [1e-3, max_g]]
+        self.bounds     = bounds + [[1, max_a], [max_N-1,max_N], [1e-3, max_g]]
         self.prior_pars = prior_pars
         self.x_min      = x_min
         self.x_max      = x_max
@@ -121,7 +115,7 @@ class DirichletProcess(cpnest.model.Model):
         a = c_par*base/base.sum()
         gammas = np.sum([numba_gammaln(ai) for ai in a])
         addends = np.array([np.sum(ss*(a-1)) + log_g - log_a - gammas for ss in subset])
-        logL = numba_gammaln(c_par) - N*np.log(g + ns) + logsumexp(addends)
+        logL = numba_gammaln(c_par) + logsumexp(addends) - N*np.log(g + ns)
         return logL
     
 
