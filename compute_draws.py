@@ -41,9 +41,15 @@ def recursive_draw(probs):
     print(len(ps))
     return np.array(ps)
 
-def draw_from_samples(samples):
-    pass
-
+def draw_from_samples(samples, N_draws):
+    p = random_walk(samples, n_draws)
+    set_p = []
+    for pi in p:
+        if not arreq_in_list(pi, set_p):
+            set_p.append(pi)
+    set_p = np.array(set_p)
+    return set_p
+    
 if __name__=="__main__":
 
     ray.init()
