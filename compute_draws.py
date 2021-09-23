@@ -3,6 +3,7 @@ import numpy.random as rd
 import pickle
 from scipy.special import logsumexp
 import ray
+import matplotlib.pyplot as plt
 
 def arreq_in_list(myarr, list_arrays):
     return next((True for elem in list_arrays if array_equal(elem, myarr)), False)
@@ -18,6 +19,7 @@ def read_samples(samples, x_min, x_max, N):
     return probs.T
 
 def random_walk(probs, N_draws):
+    ray.init(ignore_reinit_error = True)
     draws = []
     draws.append(ray.get([recursive_draw.remote(probs) for _ in range(N_draws)]))
     return np.array(draws)
@@ -38,17 +40,16 @@ def recursive_draw(probs):
                 ps.append(a)
         if np.isclose(partial_p,1.0) and finish_flag:
             break
-    print(len(ps))
     return np.array(ps)
 
-def draw_from_samples(samples, N_draws):
-    p = random_walk(samples, n_draws)
+def random_paths(samples, N_draws):
+    p = random_walk(samples, N_draws)
     set_p = []
     for pi in p:
         if not arreq_in_list(pi, set_p):
             set_p.append(pi)
-    set_p = np.array(set_p)
-    return set_p
+    set_p = np.array(set_p[0])
+    return np.log(set_p)
     
 if __name__=="__main__":
 
