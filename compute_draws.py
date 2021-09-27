@@ -38,7 +38,7 @@ def recursive_draw(probs):
                 break
             if partial_p < 1.0:
                 ps.append(a)
-        if np.isclose(partial_p,1.0) and finish_flag:
+        if np.isclose(partial_p,1.0,rtol = 1e-3) and finish_flag:
             break
     return np.array(ps)
 
@@ -62,7 +62,6 @@ if __name__=="__main__":
     print(len(samples))
     print(probs.shape)
     s = np.array([p for p in random_walk(probs, 1000)])
-#    print(s)
     set_p = []
     for si in s:
         if not arreq_in_list(si, set_p):
