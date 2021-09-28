@@ -73,6 +73,9 @@ class DirichletProcess(cpnest.model.Model):
         self.model      = model
         self.prior_norm = np.log(np.exp(-self.bounds[-2][0])-np.exp(-self.bounds[-2][1]))
         self.subsets    = preprocess(max_N, samples, x_min, x_max, N_draws = n_draws)
+        self.m          = np.linspace(self.x_min, self.x_max, max_N-1)
+        self.dm         = self.m[1] - self.m[0]
+        self.logN       = np.log(n_draws)
 
     
     def log_prior(self, x):
@@ -86,20 +89,18 @@ class DirichletProcess(cpnest.model.Model):
     
     def log_likelihood(self, x):
         N  = int(x['N'])
-        m  = np.linspace(self.x_min, self.x_max, N)
-        dm = m[1] - m[0]
         ns = self.n_samps
         log_g  = np.log(x['g'])
         subset = self.subsets[N]
         pars = [x[lab] for lab in self.labels]
-        base = np.array([self.model(mi, *pars)*dm for mi in m])
+        base = self.model(self.m, *pars)*self.dm
         c_par = x['a']
         log_a = np.log(c_par)
         g = x['g']
         a = c_par*base/base.sum()
         gammas = np.sum([numba_gammaln(ai) for ai in a])
         addends = np.array([np.sum(ss*(a-1)) + log_g - log_a - gammas for ss in subset])
-        logL = numba_gammaln(c_par) + logsumexp(addends) - N*np.log(g + ns)
+        logL = numba_gammaln(c_par) - N*np.log(g + ns) + logsumexp(addends)
         return logL
     
 
