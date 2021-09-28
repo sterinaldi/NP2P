@@ -43,5 +43,5 @@ def power_law_peak(double x,
             double l_max,
             double mu,
             double s,
-            double w:)
+            double w):
     return (1-w)*_power_law(x, alpha, x_min, x_max, l_min, l_max) + w*_normal(x,mu,s)
