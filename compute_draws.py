@@ -28,22 +28,26 @@ def random_walk(probs, N_draws):
 def recursive_draw(probs):
     while True:
         finish_flag = True
+        prior_flag = False
         ps = []
         partial_p = 0.0
         for i in range(probs.shape[0]):
             a = rd.choice(probs[i,:])
+            if a == 0:
+                prior_flag = True
             partial_p += a
             if partial_p > 1.0:
                 finish_flag = False
                 break
             if partial_p < 1.0:
                 ps.append(a)
-        if np.isclose(partial_p,1.0,rtol = 1e-3) and finish_flag:
+        if (np.isclose(partial_p,1.0,rtol = 1e-3) and finish_flag) or (prior_flag and finish_flag):
             break
     return np.array(ps)
 
 def random_paths(samples, N_draws):
-    p = random_walk(samples, N_draws)
+    samples_with_prior = np.array(list(samples) + [np.zeros(len(samples[0]))])
+    p = random_walk(samples_with_prior, N_draws)
     set_p = []
     for pi in p:
         if not arreq_in_list(pi, set_p):
