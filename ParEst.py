@@ -102,12 +102,13 @@ class DirichletProcess(cpnest.model.Model):
         addends = np.zeros(len(self.paths))
         for i, path in enumerate(self.path):
             deltas = np.sum(path*(a-1)) #priors are accounted for with zeros in path [p_i^(a_i-1)]
-            residual = 1 - np.sum(path)
-            if residual > self.precision:
-                log_res  = np.log(residual)
-                prior_ai = a[np.where(path == 0.)]
+            prior_ai = a[np.where(path == 0.)]
+            if len(prior_ai) > 0:
+                log_res  = np.log(1 - np.sum(np.exp(path)))
                 DD_prior = np.sum([log_res*ai + numba_gammaln(ai) for ai in prior_ai]) - numba_gammaln(np.sum(prior_ai))
-            addends[i] = deltas + log_g + DD_prior - gammas
+                addends[i] = deltas + log_g + DD_prior - gammas
+            else:
+                addends[i] = deltas - gammas
         logL = numba_gammaln(c_par) - K*np.log(g + N) + logsumexp(addends)
         return logL
     
