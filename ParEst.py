@@ -57,25 +57,23 @@ def preprocess(N_max, samples, x_min, x_max, nthreads = 1, N_draws = 100, sample
 
 class DirichletProcess(cpnest.model.Model):
     
-    def __init__(self, model, pars, bounds, samples, x_min, x_max, prior_pars = lambda x: 0, max_a = 10000, max_g = 200, max_N = 300, nthreads = 4, subsets = None, out_folder = './', load_preprocessed = True, n_draws = -1):
+    def __init__(self, model, pars, bounds, samples, m_min, m_max, prior_pars = lambda x: 0, max_a = 10000, max_g = 200, max_N = 300, nthreads = 4, subsets = None, out_folder = './', load_preprocessed = True, n_draws = -1, precision = 1e-3):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
-        self.n_samps    = len(samples)
-        if n_draws == -1:
-            n_draws = self.n_samps
+        self.N          = len(samples)
         self.labels     = pars
-        self.names      = pars + ['a', 'N', 'g']
-        self.bounds     = bounds + [[1, max_a], [max_N-1,max_N], [1e-3, max_g]]
+        self.names      = pars + ['a', 'g']
+        self.bounds     = bounds + [[1, max_a], [1e-3, max_g]]
         self.prior_pars = prior_pars
-        self.x_min      = x_min
-        self.x_max      = x_max
+        self.m_min      = m_min
+        self.m_max      = m_max
         self.model      = model
-        self.prior_norm = np.log(np.exp(-self.bounds[-2][0])-np.exp(-self.bounds[-2][1]))
-        self.subsets    = preprocess(max_N, samples, x_min, x_max, N_draws = n_draws)
-        self.m          = np.linspace(self.x_min, self.x_max, max_N-1)
+        self.precision  = precision
+        self.paths      = preprocess(N_bins, samples, m_min, m_max, N_paths = N_paths, precision = self.precision)
+        self.m          = np.linspace(self.m_min, self.m_max, N_bins)
         self.dm         = self.m[1] - self.m[0]
-        self.logN       = np.log(n_draws)
+        self.K          = N_bins
 
     
     def log_prior(self, x):
@@ -88,19 +86,29 @@ class DirichletProcess(cpnest.model.Model):
         return logP
     
     def log_likelihood(self, x):
-        N  = int(x['N'])
-        ns = self.n_samps
+        K  = self.K
+        N = self.N
         log_g  = np.log(x['g'])
-        subset = self.subsets[N]
         pars = [x[lab] for lab in self.labels]
         base = self.model(self.m, *pars)*self.dm
         c_par = x['a']
         log_a = np.log(c_par)
+        
         g = x['g']
         a = c_par*base/base.sum()
         gammas = np.sum([numba_gammaln(ai) for ai in a])
-        addends = np.array([np.sum(ss*(a-1)) + log_g - log_a - gammas for ss in subset])
-        logL = numba_gammaln(c_par) - N*np.log(g + ns) + logsumexp(addends)
+        
+        # Scritto esplicito per chiarezza
+        addends = np.zeros(len(self.paths))
+        for i, path in enumerate(self.path):
+            deltas = np.sum(path*(a-1)) #priors are accounted for with zeros in path [p_i^(a_i-1)]
+            residual = 1 - np.sum(path)
+            if residual > precision:
+                log_res  = np.log(residual)
+                prior_ai = a[np.where(path == 0.)]
+                DD_prior = np.sum([log_res*ai + numba_gammaln(ai) for ai in prior_ai]) - numba_gammaln(np.sum(prior_ai))
+            addends[i] = deltas + log_g + DD_prior - gammas
+        logL = numba_gammaln(c_par) - K*np.log(g + N) + logsumexp(addends)
         return logL
     
 
