@@ -103,7 +103,7 @@ class DirichletProcess(cpnest.model.Model):
         for i, path in enumerate(self.path):
             deltas = np.sum(path*(a-1)) #priors are accounted for with zeros in path [p_i^(a_i-1)]
             residual = 1 - np.sum(path)
-            if residual > precision:
+            if residual > self.precision:
                 log_res  = np.log(residual)
                 prior_ai = a[np.where(path == 0.)]
                 DD_prior = np.sum([log_res*ai + numba_gammaln(ai) for ai in prior_ai]) - numba_gammaln(np.sum(prior_ai))
