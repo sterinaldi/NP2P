@@ -18,14 +18,14 @@ def read_samples(samples, x_min, x_max, N):
     probs = np.array([p/p.sum() for p in probs])
     return probs.T
 
-def random_walk(probs, N_draws):
+def random_walk(probs, N_draws, precision):
     ray.init(ignore_reinit_error = True)
     draws = []
-    draws.append(ray.get([recursive_draw.remote(probs) for _ in range(N_draws)]))
+    draws.append(ray.get([recursive_draw.remote(probs, precision) for _ in range(N_draws)]))
     return np.array(draws)
 
 @ray.remote
-def recursive_draw(probs):
+def recursive_draw(probs, precision):
     while True:
         finish_flag = True
         prior_flag = False
@@ -41,13 +41,13 @@ def recursive_draw(probs):
                 break
             if partial_p < 1.0:
                 ps.append(a)
-        if (np.isclose(partial_p,1.0,rtol = 1e-3) and finish_flag) or (prior_flag and finish_flag):
+        if (np.isclose(partial_p, 1.0, rtol = precision) and finish_flag) or (prior_flag and finish_flag):
             break
     return np.array(ps)
 
-def random_paths(samples, N_draws):
+def random_paths(samples, N_draws, precision):
     samples_with_prior = np.array(list(samples) + [np.zeros(len(samples[0]))])
-    p = random_walk(samples_with_prior, N_draws)
+    p = random_walk(samples_with_prior, N_draws, precision)
     set_p = []
     for pi in p:
         if not arreq_in_list(pi, set_p):
