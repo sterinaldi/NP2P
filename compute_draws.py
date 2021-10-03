@@ -43,11 +43,10 @@ def recursive_draw(probs, precision):
                 ps.append(a)
         if (np.isclose(partial_p, 1.0, rtol = precision) and finish_flag) or (prior_flag and finish_flag):
             break
-    return np.array(ps)
+    return np.array([pi if pi > 0 else 1 for pi in ps])
 
 def random_paths(samples, N_draws, precision):
-    samples_with_prior = np.array(list(samples) + [np.zeros(len(samples[0]))])
-    p = random_walk(samples_with_prior, N_draws, precision)
+    p = random_walk(samples, N_draws, precision)
     set_p = []
     for pi in p:
         if not arreq_in_list(pi, set_p):
