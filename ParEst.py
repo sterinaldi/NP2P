@@ -48,7 +48,7 @@ def preprocess(N_bins, samples, x_min, x_max, nthreads = 1, N_paths = 100, preci
         p = samp(m)
         probs.append(p+np.log(dm))
     probs = [p - logsumexp(p) for p in probs]
-    probs.append(np.zeros(len(probs[0])))
+    probs.append(-np.ones(N_bins)*np.inf)
     probs = np.array(probs)
     paths = random_paths(np.exp(probs).T, N_paths, precision)
     return paths
@@ -102,7 +102,7 @@ class DirichletProcess(cpnest.model.Model):
             prior_ai = a[np.where(path == 0.)]
             N_prior_bins = len(prior_ai)
             if N_prior_bins > 0:
-                log_res  = np.log(1 - np.sum(np.exp(path)))
+                log_res  = np.log(1 - np.sum(np.exp(path[np.where(path < 0.)]))) # Sum of non-prior probabilities
                 DD_prior = np.sum([log_res*ai + numba_gammaln(ai) for ai in prior_ai]) - numba_gammaln(np.sum(prior_ai))
                 addends[i] = deltas + N_prior_bins*log_g + DD_prior - gammas
             else:
