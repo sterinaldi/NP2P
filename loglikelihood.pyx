@@ -4,7 +4,7 @@
 # cython: language_level=3, cdivision=True, boundscheck=False, wraparound=False, binding=True, embedsignature=True
 cimport cython
 from cpnest.parameter cimport LivePoint
-from libc.math cimport log, exp, HUGE_VAL,exp, sqrt, M_PI
+from libc.math cimport log, exp, HUGE_VAL, exp, sqrt, M_PI, fabs
 from scipy.special.cython_special cimport gammaln, erf
 cimport numpy as np
 import numpy as np
@@ -66,10 +66,11 @@ def log_likelihood(LivePoint LP,
                    np.ndarray[double,mode="c",ndim=2] draws,
                    unsigned int model):
 
+    cdef double dx = fabs(x[0]-x[1])
     cdef np.ndarray[double,mode="c",ndim=1] m
     #FIXME: we must make sure the base distributions are normalised to start with
     if model == 0:
-        m = _normal(x, LP['mean'], LP['sigma'])
+        m = _normal(x, LP['mean'], LP['sigma'])*dx
 #    elif model == 1:
 #        m = _power_law()
 
