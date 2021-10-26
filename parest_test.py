@@ -54,13 +54,13 @@ samples = np.array([interp1d(m, p) for p in samples_set])
 rec_file = 'path/to/file' # CHANGEME
 rec = np.genfromtxt(rec_file, names = True)
 
-out_folder  = 'path/to/out_folder' # CHANGEME
+out_folder  = 'path/to/outfolder' # CHANGEME
 
-names = ['mean', 'sigma'] #
+names = ['mean', 'sigma']
 nargs = len(names)
 bounds = [[20,60], [1,6]]
 labels = ['\\mu', '\\sigma']
-label_selected_model = 0# Gaussian
+label_selected_model = 0 #Gaussian
 true_vals = [40, 5]
 x_min = 20
 x_max = 60
@@ -95,6 +95,7 @@ else:
 labels = labels + ['\\alpha']
 par_names = names
 names = names + ['a']
+true_vals = true_vals + [1]
 samps = np.column_stack([post[lab] for lab in names])
 #print('log Evidence: {0}'.format(work.logZ))
 
