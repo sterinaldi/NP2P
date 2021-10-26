@@ -1,6 +1,7 @@
 import cpnest.model
 import numpy as np
 from loglikelihood import log_likelihood
+from scipy.special import logsumexp
 
 def preprocess(N_bins, samples, x_min, x_max):
     x  = np.linspace(x_min, x_max, N_bins)
@@ -26,8 +27,8 @@ class DirichletProcess(cpnest.model.Model):
         self.x_min      = x_min
         self.x_max      = x_max
         self.model      = model
-        self.draws      = preprocess(N_bins, samples, m_min, m_max)
-        self.x          = np.linspace(self.m_min, self.m_max, N_bins)
+        self.draws      = preprocess(N_bins, samples, x_min, x_max)
+        self.x          = np.linspace(self.x_min, self.x_max, N_bins)
         self.dx         = self.x[1] - self.x[0]
         self.K          = N_bins
 
@@ -35,9 +36,12 @@ class DirichletProcess(cpnest.model.Model):
     def log_prior(self, x):
     
         logP = super(DirichletProcess,self).log_prior(x)
+#        print(x)
         if np.isfinite(logP):
-            logP = -(1/x['a'])
-            pars = [x[lab] for lab in self.labels]
+            logP = 0.0
+#            logP = -(1/x['a'])
+#            print(logP)
+#            pars = [x[lab] for lab in self.labels]
 #            logP += self.prior_pars(*pars)
         return logP
     

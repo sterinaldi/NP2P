@@ -106,7 +106,7 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
         for i in range(Nbins):
             l += (a[i]-1.0)*draws[i,j]-g[i]
 
-        logL += log_add(logL,l)
+        logL = log_add(logL,l)
 
     lognorm = gammaln(concentration)
     

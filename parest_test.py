@@ -61,13 +61,24 @@ max_alpha = 10000
 # change also the model in comparison plot (see below)
 #-----------------------
 
-openfile = open(file, 'r')
-json_dict = json.load(samp_file)
-for d in np.array(json_dict.values()).T:
-    samples.append(d)
+openfile = open(samp_file, 'r')
+json_dict = json.load(openfile)
+draws = []
+samps = []
+for i, p in enumerate(json_dict.values()):
+#    print(p)
+    draws.append(p)
+draws = np.array(draws).T
+#print(draws.shape)
+#print(draws[0])
+for p in draws:
+    samps.append(p)
 openfile.close()
 m = np.array([float(m) for m in json_dict.keys()])
-samples = np.array([interp1d(m, p) for p in samples_set])
+samples = []
+for d in samps:
+#    print(d)
+    samples.append(interp1d(m, d))
 
 # Comparison with DPGMM outcome
 rec = np.genfromtxt(rec_file, names = True)
@@ -88,8 +99,8 @@ PE = DirichletProcess(
 if 1:
     work = cpnest.CPNest(PE,
                         verbose = 2,
-                        nlive = 100,
-                        maxmcmc = 100,
+                        nlive = 1000,
+                        maxmcmc = 1000,
                         nensemble = 4,
                         output  = out_folder
                         )
