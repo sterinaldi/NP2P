@@ -43,9 +43,9 @@ def logPrior(*args):
 # OPTIONS
 #------------------------
 
-samp_file = 'path/to/file' # CHANGEME
+samp_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/posterior_functions_gaussian.json' # CHANGEME
 out_folder  = '/Users/stefanorinaldi/Documents/parametric/gaussian/' # CHANGEME
-rec_file = 'path/to/file' # CHANGEME
+rec_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/log_rec_prob_gaussian.txt' # CHANGEME
 
 names = ['mean', 'sigma']
 nargs = len(names)
@@ -77,7 +77,7 @@ PE = DirichletProcess(
     names,
     bounds,
     samples,
-    x_min = x_min
+    x_min = x_min,
     x_max = x_max,
     prior_pars = logPrior,
     max_a = max_alpha,
