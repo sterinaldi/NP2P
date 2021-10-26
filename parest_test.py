@@ -41,7 +41,7 @@ def logPrior(*args):
     return 0
 
 # Samples
-samp_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/posteriors/posterior_functions_untapered.pkl' # CHANGEME
+samp_file = 'path/to/file' # CHANGEME
 openfile = open(file, 'r')
 json_dict = json.load(samp_file)
 for d in np.array(json_dict.values()).T:
@@ -51,33 +51,32 @@ m = np.array([float(m) for m in json_dict.keys()])
 samples = np.array([interp1d(m, p) for p in samples_set])
 
 # Comparison with DPGMM outcome
-rec_file = '/Users/stefanorinaldi/Documents/mass_inference/DPGMM/reconstructed_events/rec_prob/log_rec_prob_untapered.txt' # CHANGEME
+rec_file = 'path/to/file' # CHANGEME
 rec = np.genfromtxt(rec_file, names = True)
 
-out_folder  = '/Users/stefanorinaldi/Documents/parametric/untapered/' # CHANGEME
+out_folder  = 'path/to/out_folder' # CHANGEME
 
-names = ['b', 'mmin', 'l', 'mu', 's', 'w'] #
+names = ['mean', 'sigma'] #
 nargs = len(names)
-bounds = [[1,5], [10,30], [1,10], [5,40], [1,10], [0,1]]
-labels = ['\\beta', 'm_{min}', '\\lambda','\\mu', '\\sigma', 'w']
-selected_model = PLpeak #untapered
-true_vals = [4, 15, 2, 0, 0, 0]
-
+bounds = [[20,60], [1,6]]
+labels = ['\\mu', '\\sigma']
+label_selected_model = 0# Gaussian
+true_vals = [40, 5]
+x_min = 20
+x_max = 60
+N_bins = 30
 
 PE = DirichletProcess(
-    selected_model,
+    label_selected_model,
     names,
     bounds,
     samples,
-    m_min = 9,
-    m_max = 59,
+    x_min = x_min
+    x_max = x_max,
     prior_pars = logPrior,
     max_a = 10000,
-    max_g = 5,
-    N_bins = 30,
-    out_folder = out_folder,
-    load_preprocessed = False,
-    subsets=None#subsets
+    N_bins = N_bins,
+    out_folder = out_folder
     )
 
 if 1:
@@ -112,16 +111,14 @@ fig.savefig(os.path.join(out_folder,'joint_posterior.pdf'), bbox_inches='tight')
 # Comparison: HDPGMM vs model (median of all inferred parameters)
 #p = np.percentile(np.column_stack([x[lab] for lab in par_names]), 50, axis = 0)
 
-x = np.linspace(PE.m_min,PE.m_max,100)
+x = np.linspace(PE.x_min,PE.x_max,100)
 fig = plt.figure()
 ax  = fig.add_subplot(111)
 ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'magenta', alpha = 0.5)
-#ax.fill_between(rec['m'], np.exp(rec['84']), np.exp(rec['16']), color = 'aqua', alpha = 0.5)
 ax.plot(rec['m'], np.exp(rec['50']), color = 'r')
-#print(*p)
 pdf = []
 for i,si in enumerate(post):
-    f = np.array([selected_model(xi, si['b'], si['mmin'], si['l'], si['mu'], si['s'], si['w']) for xi in x])
+    f = np.array([gauss(xi, si['mean'], si['sigma']) for xi in x])
     pdf.append(f)
     if i%10 == 0:
         ax.plot(x, f, color='turquoise', linewidth = 0.1)
