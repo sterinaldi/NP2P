@@ -56,7 +56,7 @@ true_vals = [40, 5]
 x_min = 20
 x_max = 60
 N_bins = 30
-max_alpha
+max_alpha = 10000
 
 # change also the model in comparison plot (see below)
 #-----------------------
