@@ -17,8 +17,8 @@ class build_ext(_build_ext):
         self.include_dirs.append(numpy.get_include())
 
 ext_modules=[
-             Extension("parametric_models",
-                       sources=["parametric_models.pyx"],
+             Extension("loglikelihood",
+                       sources=["loglikelihood.pyx"],
                        libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=[numpy.get_include()]
@@ -26,7 +26,7 @@ ext_modules=[
              ]
 
 setup(
-      name = "parametric_models",
+      name = "loglikelihood",
       ext_modules = cythonize(ext_modules, language_level = "3"),
       include_dirs=[numpy.get_include()]
       )
