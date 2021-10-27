@@ -90,7 +90,7 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
     """
     cdef unsigned int Nbins = draws.shape[1]
     cdef unsigned int Ndraws = draws.shape[0]
-    cdef np.ndarray[double,mode="c",ndim=1] g = np.zeros(Nbins, dtype=np.double)
+#    cdef np.ndarray[double,mode="c",ndim=1] g = np.zeros(Nbins, dtype=np.double)
     cdef np.ndarray[double,mode="c",ndim=1] a = np.zeros(Nbins, dtype=np.double)
     
     # compute the nnormalisation constants
@@ -98,18 +98,19 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
     cdef double l
     cdef double logL = -HUGE_VAL
     cdef double global_alpha = 0.0
+    cdef double g = 0.0
     for i in range(Nbins):
         a[i] = concentration*m[i]
-        g[i] = gammaln(a[i])
+        g += gammaln(a[i])
         global_alpha += a[i]
     
-    cdef double lognorm = gammaln(global_alpha)
+    cdef double lognorm = gammaln(global_alpha) - g
     
     for j in range(Ndraws):
         l = 0.0
         for i in range(Nbins):
-            l += (a[i]-1.0)*draws[i,j]-g[i]
+            l += (a[i]-1.0)*draws[j,i]
 
-        logL = log_add(logL,l)
+        logL = log_add(logL,l + lognorm)
     
-    return logL-log(Ndraws)+lognorm
+    return logL-log(Ndraws)
