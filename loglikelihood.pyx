@@ -21,6 +21,12 @@ cdef np.ndarray[double,mode="c",ndim=1] _normal(np.ndarray[double,mode="c",ndim=
 def normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s):
     return _normal(x, x0, s)
 
+cdef np.ndarray[double,mode="c",ndim=1] _bimodal(np.ndarray[double,mode="c",ndim=1] x, double m1, double s1, double m2, double m2, double w):
+    return w*_normal(x, m1, s1) + (1-w)*_normal(x, m2, s2)
+
+def np.ndarray[double,mode="c",ndim=1] _bimodal(np.ndarray[double,mode="c",ndim=1] x, double m1, double s1, double m2, double m2, double w):
+    return _bimodal(x,m1,s1,m2,s2,w)
+
 cdef np.ndarray[double,mode="c",ndim=1] _power_law(np.ndarray[double,mode="c",ndim=1] x,
                                                    double alpha,
                                                    double x_min,
@@ -71,9 +77,8 @@ def log_likelihood(LivePoint LP,
     #FIXME: we must make sure the base distributions are normalised to start with
     if model == 0:
         m = _normal(x, LP['mean'], LP['sigma'])*dx
-#    elif model == 1:
-#        m = _power_law()
-
+    elif model == 1:
+        m = bimodal(x, LP['mean1'], LP['sigma1'], LP['mean2'], LP['sigma2'], LP['w'])
     else:
         print('model not supported, screw you!')
         exit()
