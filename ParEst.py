@@ -35,11 +35,8 @@ class DirichletProcess(cpnest.model.Model):
     def log_prior(self, x):
     
         logP = super(DirichletProcess,self).log_prior(x)
-#        print(x)
         if np.isfinite(logP):
-            logP = 0.0
-#            logP = -(1/x['a'])
-#            print(logP)
+            logP = -(1/x['a'])
 #            pars = [x[lab] for lab in self.labels]
 #            logP += self.prior_pars(*pars)
         return logP
