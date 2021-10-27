@@ -21,50 +21,34 @@ cdef np.ndarray[double,mode="c",ndim=1] _normal(np.ndarray[double,mode="c",ndim=
 def normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s):
     return _normal(x, x0, s)
 
-cdef np.ndarray[double,mode="c",ndim=1] _bimodal(np.ndarray[double,mode="c",ndim=1] x, double m1, double s1, double m2, double m2, double w):
-    return w*_normal(x, m1, s1) + (1-w)*_normal(x, m2, s2)
-
-def np.ndarray[double,mode="c",ndim=1] _bimodal(np.ndarray[double,mode="c",ndim=1] x, double m1, double s1, double m2, double m2, double w):
-    return _bimodal(x,m1,s1,m2,s2,w)
 
 cdef np.ndarray[double,mode="c",ndim=1] _power_law(np.ndarray[double,mode="c",ndim=1] x,
                                                    double alpha,
-                                                   double x_min,
-                                                   double x_max,
-                                                   double l_min,
-                                                   double l_max):
+                                                   double x_cut,
+                                                   double l_cut):
 
     cdef unsigned int i
     cdef unsigned int n = x.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
     cdef double[:] res_view = res
+    cdef double pre_PL = (alpha-1)/(x_cut**(1-alpha))
+    cdef double N      = 1 + pre_PL*x_cut**(-alpha)*l_cut*np.sqrt(2*M_PI)/2.
     for i in range(n):
-        res_view[i] = ((1-alpha)/(x_max**(1-alpha) - x_min**(1-alpha)))*x**(-alpha)*(1+erf((x-x_min)/(l_min)))*(1+erf((x_max-x)/l_max))/4.
+        if x[i] < x_cut:
+            res_view[i] = exp(-(x[i]-x_cut)**2/(2*l_cut**2))*pre_PL*x_cut**(-alpha)/N
+        else:
+            res_view[i] = pre_PL*x[i]**(-alpha) / N
     return res
 
 def power_law(np.ndarray[double,mode="c",ndim=1] x,
-              double alpha,
-              double x_min,
-              double x_max,
-              double l_min,
-              double l_max):
-    return _power_law(x, alpha, x_min, x_max, l_min, l_max)
+                                                   double alpha,
+                                                   double x_cut,
+                                                   double l_cut):
+    return _power_law(x, alpha, x_cut, l_cut)
 
 def bimodal(np.ndarray[double,mode="c",ndim=1] x,double x0,double s0,double x1,double s1, double w):
     return w*_normal(x,x0,s0)+(1.0-w)*_normal(x,x1,s1)
-
-def power_law_peak(np.ndarray[double,mode="c",ndim=1] x,
-            double alpha,
-            double x_min,
-            double x_max,
-            double l_min,
-            double l_max,
-            double mu,
-            double s,
-            double w):
-    return (1-w)*_power_law(x, alpha, x_min, x_max, l_min, l_max) + w*_normal(x,mu,s)
-
-
+    
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
 
 def log_likelihood(LivePoint LP,
@@ -78,7 +62,7 @@ def log_likelihood(LivePoint LP,
     if model == 0:
         m = _normal(x, LP['mean'], LP['sigma'])*dx
     elif model == 1:
-        m = bimodal(x, LP['mean1'], LP['sigma1'], LP['mean2'], LP['sigma2'], LP['w'])
+        m = _power_law(x, LP['beta'], LP['xcut'], LP['lcut'])
     else:
         print('model not supported, screw you!')
         exit()
