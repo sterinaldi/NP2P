@@ -85,7 +85,9 @@ def log_likelihood(LivePoint LP,
 cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
                             np.ndarray[double,mode="c",ndim=2] draws,
                             double concentration):
-
+    """
+    L = \frac{1}{N}\sum_i \Gamma(a)\prod_j \frac{p^{a*m_j-1)}{\Gamma(a*m_j)}
+    """
     cdef unsigned int Nbins = draws.shape[1]
     cdef unsigned int Ndraws = draws.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] g = np.zeros(Nbins, dtype=np.double)
@@ -93,13 +95,15 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
     
     # compute the nnormalisation constants
     cdef unsigned int i,j
-    cdef double lognorm = gammaln(concentration)
     cdef double l
     cdef double logL = -HUGE_VAL
-    
+    cdef double global_alpha = 0.0
     for i in range(Nbins):
         a[i] = concentration*m[i]
         g[i] = gammaln(a[i])
+        global_alpha += a[i]
+    
+    cdef double lognorm = gammaln(global_alpha)
     
     for j in range(Ndraws):
         l = 0.0
@@ -107,7 +111,5 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
             l += (a[i]-1.0)*draws[i,j]-g[i]
 
         logL = log_add(logL,l)
-
-    lognorm = gammaln(concentration)
     
     return logL-log(Ndraws)+lognorm

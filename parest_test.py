@@ -43,13 +43,13 @@ def logPrior(*args):
 # OPTIONS
 #------------------------
 
-samp_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/posterior_functions_gaussian.json' # CHANGEME
-out_folder  = '/Users/stefanorinaldi/Documents/parametric/gaussian/' # CHANGEME
-rec_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/log_rec_prob_gaussian.txt' # CHANGEME
+samp_file = 'posterior_functions_gaussian.json' # CHANGEME
+out_folder  = 'gaussian/' # CHANGEME
+rec_file = 'log_rec_prob_gaussian.txt' # CHANGEME
 
 names = ['mean', 'sigma']
 nargs = len(names)
-bounds = [[20,60], [1,6]]
+bounds = [[20,60], [1,10]]
 labels = ['\\mu', '\\sigma']
 label_selected_model = 0 #Gaussian
 true_vals = [40, 5]

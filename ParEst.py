@@ -29,10 +29,9 @@ class DirichletProcess(cpnest.model.Model):
         self.model      = model
         self.draws      = preprocess(N_bins, samples, x_min, x_max)
         self.x          = np.linspace(self.x_min, self.x_max, N_bins)
-        self.dx         = self.x[1] - self.x[0]
+        self.dx         = np.abs(self.x[1] - self.x[0])
         self.K          = N_bins
 
-    
     def log_prior(self, x):
     
         logP = super(DirichletProcess,self).log_prior(x)
