@@ -6,7 +6,7 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
-from loglikelihood import normal, uniform, exponential
+from loglikelihood import normal, uniform, exponential, cauchy, generalized_normal
 
 # OPTIONS
 #------------------------
@@ -22,15 +22,15 @@ rec_file   = '/Users/stefanorinaldi/Documents/parametric/gaussian/log_rec_prob_g
 out_folder = '/Users/stefanorinaldi/Documents/parametric/' # CHANGEME
 
 # Select a model:
-model = 'gaussian' # 'gaussian', 'uniform', 'exponential'
+model = 'normal' # 'normal', 'uniform', 'exponential', 'cauchy', 'gen_normal'
 out_folder = out_folder + model + '/'
 
-if model == 'gaussian':
+if model == 'normal':
     names = ['mean', 'sigma']
     nargs = len(names)
     bounds = [[20,60], [1,10]]
     labels = ['\\mu', '\\sigma']
-    label_selected_model = 0 # Gaussian
+    label_selected_model = 0 # Normal
     true_vals = [40, 5]
     model = normal
 
@@ -51,6 +51,25 @@ if model == 'uniform':
     label_selected_model = 3 # Uniform
     true_vals = None
     model = uniform
+
+if model == 'cauchy':
+    names = ['x0', 'g']
+    nargs = len(names)
+    bounds = [[20, 60], [1,10]]
+    labels = ['x_0', '\\gamma']
+    label_selected_model = 5 # Cauchy
+    true_vals = None
+    model = cauchy
+
+if model == 'gen_normal':
+    names = ['x0','s','b']
+    nargs = len(names)
+    bounds = [[20, 60], [1,10], [1,4]]
+    labels = ['\\mu', '\\sigma', '\\beta']
+    label_selected_model = 6 # Generalized Normal
+    true_vals = None
+    model = generalized_normal
+
 
 # Load data
 openfile = open(draws_file, 'r')

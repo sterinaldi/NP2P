@@ -5,7 +5,7 @@
 cimport cython
 from cpnest.parameter cimport LivePoint
 from libc.math cimport log, exp, HUGE_VAL, exp, sqrt, M_PI, fabs
-from scipy.special.cython_special cimport gammaln, erf
+from scipy.special.cython_special cimport gammaln, erf, gamma
 cimport numpy as np
 import numpy as np
 
@@ -39,8 +39,30 @@ cdef np.ndarray[double,mode="c",ndim=1] _exponential(np.ndarray[double,mode="c",
 def exponential(np.ndarray[double,mode="c",ndim=1] x, double x0, double l):
     return _exponential(x,x0,l)
 
+cdef np.ndarray[double,mode="c",ndim=1] _cauchy(np.ndarray[double,mode="c",ndim=1] x, double x0, double g):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    for i in range(n):
+        res_view[i] = g/M_PI * 1/((x[i] - x0)**2 + g**2)
+    return res
 
+def cauchy(np.ndarray[double,mode="c",ndim=1] x, double x0, double g):
+    return _cauchy(x, x0, g)
 
+cdef np.ndarray[double,mode="c",ndim=1] _generalized_normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s, double b):
+    # See https://en.wikipedia.org/wiki/Generalized_normal_distribution
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    for i in range(n):
+        res_view[i] = b/(2*s*gamma(1/b)) * exp(-(fabs(x[i]-x0)/s)**b)
+    return res
+
+def generalized_normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s, double b):
+    return _generalized_normal(x, x0, s, b)
 
 cdef np.ndarray[double,mode="c",ndim=1] _power_law(np.ndarray[double,mode="c",ndim=1] x,
                                                    double alpha,
@@ -93,6 +115,10 @@ def log_likelihood(LivePoint LP,
         m = _uniform(x, LP['x_min'], LP['x_max'])*dx
     elif model == 4:
         m = _exponential(x, LP['x0'], LP['l'])*dx
+    elif model == 5:
+        m = _cauchy(x, LP['x0'], LP['g'])*dx
+    elif model == 6:
+        m = _generalized_normal(x, LP['x0'], LP['s'], LP['b'])*dx
     else:
         print('model not supported, screw you!')
         exit()
