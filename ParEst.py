@@ -22,7 +22,7 @@ class DirichletProcess(cpnest.model.Model):
         self.N          = len(samples)
         self.labels     = pars
         self.names      = pars + ['a']
-        self.bounds     = bounds + [[1, max_a]]
+        self.bounds     = bounds + [[0, max_a]]
         self.prior_pars = prior_pars
         self.x_min      = x_min
         self.x_max      = x_max
