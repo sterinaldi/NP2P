@@ -21,12 +21,31 @@ cdef np.ndarray[double,mode="c",ndim=1] _normal(np.ndarray[double,mode="c",ndim=
 def normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s):
     return _normal(x, x0, s)
 
+cdef np.ndarray[double,mode="c",ndim=1] _uniform(np.ndarray[double,mode="c",ndim=1] x, double x_min, double x_max):
+    return np.ones(x.shape[0], dtype = np.double)/(x_max - x_min)
+
+def uniform(np.ndarray[double,mode="c",ndim=1] x, double x_min, double x_max):
+    return _uniform(x, x_min, x_max)
+
+cdef np.ndarray[double,mode="c",ndim=1] _exponential(np.ndarray[double,mode="c",ndim=1] x, double x0, double l):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    for i in range(n):
+        res_view[i] = exp(-fabs(x[i]-x0)/l)/(2*l)
+    return res
+    
+def exponential(np.ndarray[double,mode="c",ndim=1] x, double x0, double l):
+    return _exponential(x,x0,l)
+
+
+
 
 cdef np.ndarray[double,mode="c",ndim=1] _power_law(np.ndarray[double,mode="c",ndim=1] x,
                                                    double alpha,
                                                    double x_cut,
                                                    double l_cut):
-
     cdef unsigned int i
     cdef unsigned int n = x.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
@@ -46,9 +65,14 @@ def power_law(np.ndarray[double,mode="c",ndim=1] x,
                                                    double l_cut):
     return _power_law(x, alpha, x_cut, l_cut)
 
+cdef _bimodal(np.ndarray[double,mode="c",ndim=1] x,double x0,double s0,double x1,double s1, double w):
+    return w*_normal(x,x0,s0)+(1.0-w)*_normal(x,x1,s1)
+
 def bimodal(np.ndarray[double,mode="c",ndim=1] x,double x0,double s0,double x1,double s1, double w):
     return w*_normal(x,x0,s0)+(1.0-w)*_normal(x,x1,s1)
-    
+
+########################
+
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
 
 def log_likelihood(LivePoint LP,
@@ -62,7 +86,13 @@ def log_likelihood(LivePoint LP,
     if model == 0:
         m = _normal(x, LP['mean'], LP['sigma'])*dx
     elif model == 1:
-        m = _power_law(x, LP['beta'], LP['xcut'], LP['lcut'])
+        m = _power_law(x, LP['beta'], LP['xcut'], LP['lcut'])*dx
+    elif model == 2:
+        m = _bimodal(x, LP['m1'], LP['s1'], LP['m2'], LP['s2'], LP['w'])*dx
+    elif model == 3:
+        m = _uniform(x, LP['x_min'], LP['x_max'])*dx
+    elif model == 4:
+        m = _exponential(x, LP['x0'], LP['l'])*dx
     else:
         print('model not supported, screw you!')
         exit()
