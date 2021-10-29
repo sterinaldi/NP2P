@@ -181,7 +181,7 @@ cdef np.ndarray[double,mode="c",ndim=1] _multi_peak(np.ndarray[double,mode="c",n
         if mmin < x[i] < mmax:
             if x[i] < mmin + d:
                 S = _smoothing(x[i], mmin, d)
-            res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*lg*_normal_d(x[i], mu1, s1) + l*(1-lg)*_normal_d(x[i], mu2, s2))*S
+            res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*(lg*_normal_d(x[i], mu1, s1) + (1-lg)*_normal_d(x[i], mu2, s2)))*S
     return res
 
 def truncated(np.ndarray[double,mode="c",ndim=1] x, double a, double mmin, double mmax, double d):
