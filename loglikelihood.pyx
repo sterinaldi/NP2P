@@ -100,7 +100,8 @@ cdef double _truncated_d(double x, double a, double mmin, double mmax):
     cdef double N = (a-1)/(mmin**(1-a)-mmax**(1-a))
     if mmin < x < mmax:
         return N*x**(-a)
-    return 0.
+    else:
+        return 0.
     
 cdef double _normal_d(double x, double x0, double s):
     return exp(-((x-x0)**2/(2*s**2)))/(sqrt(2*M_PI)*s)
@@ -111,15 +112,19 @@ cdef double _smoothing(double x, double mmin, double d):
 ########################
 # Population models from O3a Pop paper
 
-cdef np.ndarray[double,mode="c",ndim=1] _truncated(np.ndarray[double,mode="c",ndim=1] x, double a, double mmin, double mmax):
+cdef np.ndarray[double,mode="c",ndim=1] _truncated(np.ndarray[double,mode="c",ndim=1] x, double a, double mmin, double mmax, double d):
     cdef unsigned int i
     cdef unsigned int n = x.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
     cdef double[:] res_view = res
     cdef double N = (a-1)/(mmin**(1-a)-mmax**(1-a))
+    cdef double S = 1.
     for i in range(n):
+        S = 1.
         if mmin < x[i] < mmax:
-            res_view[i] = N*x[i]**(-a)
+            if x[i] < mmin + d:
+                S = _smoothing(x[i], mmin, d)
+            res_view[i] = N*x[i]**(-a)*S
     return res
 
 cdef np.ndarray[double,mode="c",ndim=1] _pl_peak(np.ndarray[double,mode="c",ndim=1] x, double l, double b, double mmin, double d, double mmax, double mu, double s):
@@ -154,6 +159,17 @@ cdef np.ndarray[double,mode="c",ndim=1] _broken_pl(np.ndarray[double,mode="c",nd
                 res_view[i] = _truncated_d(x[i], a2, mbreak, mmax)*S/2.
     return res
 
+cdef np.ndarray[double,mode="c",ndim=1] _broken_pl_peak(np.ndarray[double,mode="c",ndim=1] x, double a1, double a2, double mmin, double mmax, double b, double d, double mu, double s, double l):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    cdef np.ndarray[double,mode="c",ndim=1] pl = _broken_pl(x, a1, a2, mmin, mmax, b, d)
+    cdef double[:] pl_view = pl
+    for i in range(n):
+        res_view[i] = (1-l)*pl_view[i] + l*_normal_d(x[i], mu, s)
+    return res
+
 cdef np.ndarray[double,mode="c",ndim=1] _multi_peak(np.ndarray[double,mode="c",ndim=1] x, double l, double lg, double b, double mmin, double d, double mmax, double mu1, double s1, double mu2, double s2):
     cdef unsigned int i
     cdef unsigned int n = x.shape[0]
@@ -168,8 +184,8 @@ cdef np.ndarray[double,mode="c",ndim=1] _multi_peak(np.ndarray[double,mode="c",n
             res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*lg*_normal_d(x[i], mu1, s1) + l*(1-lg)*_normal_d(x[i], mu2, s2))*S
     return res
 
-def truncated(np.ndarray[double,mode="c",ndim=1] x, double a, double mmin, double mmax):
-    return _truncated(x, a, mmin, mmax)
+def truncated(np.ndarray[double,mode="c",ndim=1] x, double a, double mmin, double mmax, double d):
+    return _truncated(x, a, mmin, mmax, d)
 
 def pl_peak(np.ndarray[double,mode="c",ndim=1] x, double l, double b, double mmin, double d, double mmax, double mu, double s):
     return _pl_peak(x, l, b, mmin, d, mmax, mu, s)
@@ -180,6 +196,9 @@ def broken_pl(np.ndarray[double,mode="c",ndim=1] x, double a1, double a2, double
 def multi_peak(np.ndarray[double,mode="c",ndim=1] x, double l, double lg, double b, double mmin, double d, double mmax, double mu1, double s1, double mu2, double s2):
     return _multi_peak(x, l, lg, b, mmin, d, mmax, mu1, s1, mu2, s2)
 
+def broken_pl_peak(np.ndarray[double,mode="c",ndim=1] x, double a1, double a2, double mmin, double mmax, double b, double d, double mu, double s, double l):
+    return _broken_pl_peak(x, a1, a2, mmin, mmax, b, d, mu, s, l)
+
 ########################
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
@@ -189,6 +208,8 @@ def log_likelihood(LivePoint LP,
                    np.ndarray[double,mode="c",ndim=2] draws,
                    unsigned int model):
 
+    cdef int i
+    cdef int n = x.shape[0]
     cdef double dx = fabs(x[0]-x[1])
     cdef np.ndarray[double,mode="c",ndim=1] m
     #FIXME: we must make sure the base distributions are normalised to start with
@@ -207,17 +228,18 @@ def log_likelihood(LivePoint LP,
     elif model == 6:
         m = _generalized_normal(x, LP['x0'], LP['s'], LP['b'])*dx
     elif model == 7:
-        m = _truncated(x, LP['b'], LP['mmin'], LP['mmax'])*dx
+        m = _truncated(x, LP['b'], LP['mmin'], LP['mmax'], LP['d'])*dx
     elif model == 8:
         m = _broken_pl(x, LP['a1'], LP['a2'], LP['mmin'], LP['mmax'], LP['b'], LP['d'])*dx
     elif model == 9:
         m = _pl_peak(x, LP['l'], LP['b'], LP['mmin'], LP['d'], LP['mmax'], LP['mu'], LP['s'])*dx
     elif model == 10:
         m = _multi_peak(x, LP['l'], LP['lg'], LP['b'], LP['mmin'], LP['d'], LP['mmax'], LP['mu1'], LP['s1'], LP['mu2'], LP['s2'])*dx
+    elif model == 11:
+        m = _broken_pl_peak(x, LP['a1'], LP['a2'], LP['mmin'], LP['mmax'], LP['b'], LP['d'], LP['mu'], LP['s'], LP['l'])*dx
     else:
         print('model not supported, screw you!')
         exit()
-
     cdef double concentration = LP['a']
     cdef double logL = _log_likelihood(m, draws, concentration)
     return logL
@@ -230,7 +252,6 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
     """
     cdef unsigned int Nbins = draws.shape[1]
     cdef unsigned int Ndraws = draws.shape[0]
-#    cdef np.ndarray[double,mode="c",ndim=1] g = np.zeros(Nbins, dtype=np.double)
     cdef np.ndarray[double,mode="c",ndim=1] a = np.zeros(Nbins, dtype=np.double)
     
     # compute the nnormalisation constants
