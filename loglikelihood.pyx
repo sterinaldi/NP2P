@@ -132,7 +132,7 @@ cdef np.ndarray[double,mode="c",ndim=1] _pl_peak(np.ndarray[double,mode="c",ndim
         S = 1.
         if mmin < x[i] < mmax:
             if x[i] < mmin + d:
-                S = _smoothing(x, mmin, d)
+                S = _smoothing(x[i], mmin, d)
             res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*_normal_d(x[i], mu, s))*S
     return res
 
@@ -147,7 +147,7 @@ cdef np.ndarray[double,mode="c",ndim=1] _broken_pl(np.ndarray[double,mode="c",nd
         S = 1.
         if mmin < x[i] < mmax:
             if x[i] < mmin + d:
-                S = _smoothing(x, mmin, d)
+                S = _smoothing(x[i], mmin, d)
             if x[i] < mbreak:
                 res_view[i] = _truncated_d(x[i], a1, mmin, mbreak)*S/2.
             else:
@@ -164,7 +164,7 @@ cdef np.ndarray[double,mode="c",ndim=1] _multi_peak(np.ndarray[double,mode="c",n
         S = 1.
         if mmin < x[i] < mmax:
             if x[i] < mmin + d:
-                S = _smoothing(x, mmin, d)
+                S = _smoothing(x[i], mmin, d)
             res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*lg*_normal_d(x[i], mu1, s1) + l*(1-lg)*_normal_d(x[i], mu2, s2))*S
     return res
 
