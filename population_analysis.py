@@ -14,14 +14,14 @@ from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_p
 # Select dataset
 dataset = 'O3a' # 'O3', 'O3a'
 # Select a model:
-model = 'broken_pl' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak'
+model = 'pl_peak' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak'
 # Postprocessing
 postprocessing = False
 # Data folder
 folder = '/Users/stefanorinaldi/Documents/parametric/population/' # CHANGEME
 # Mass boundaries
 x_min = 4
-x_max = 60
+x_max = 90
 # Concentration parameter
 max_alpha = 10000
 #------------------------
@@ -88,7 +88,7 @@ if model == 'truncated':
 if model == 'broken_pl':
     names = ['a1','a2','mmin','mmax','b','d']
     nargs = len(names)
-    bounds = [[1,12], [1,12], [2,10], [30,10], [0,1], [0,10]]
+    bounds = [[1,12], [1,12], [2,10], [30,100], [0,1], [0,10]]
     labels = ['\\beta_1', '\\beta_2', 'm_{min}', 'm_{max}', 'b', '\\delta_m']
     label_selected_model = 8
     true_vals = [1.58,5.59,3.96,87.14,0.43,4.83]
@@ -98,7 +98,7 @@ if model == 'broken_pl':
 if model == 'pl_peak':
     names = ['l','b','mmin','d','mmax','mu','s']
     nargs = len(names)
-    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [20, 50], [1,20]]
+    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [20, 50], [1,10]]
     labels = ['\\lambda_{peak}', '\\beta', 'm_{min}', '\\delta_m', 'm_{max}', '\\mu_m', '\\sigma_m']
     label_selected_model = 9
     true_vals = [0.1,2.63,4.59,4.82,86.22,33.07,5.69]
@@ -108,7 +108,7 @@ if model == 'pl_peak':
 if model == 'multi_peak':
     names = ['l', 'lg', 'b', 'mmin', 'd', 'mmax', 'mu1', 's1', 'mu2', 's2']
     nargs = len(names)
-    bounds = [[0,1],[0,1],[1,12],[2,10],[0,10],[30,100],[20,50],[1,20],[50,100],[1,20]]
+    bounds = [[0,1],[0,1],[1,12],[2,10],[0,10],[30,100],[20,50],[1,10],[50,100],[1,10]]
     labels = ['\\lambda','\\lambda_1','\\beta','m_{min}','\\delta_m','m_{max}','\\mu_{m,1}','\\sigma_{m,1}','\\mu_{m,2}','\\sigma_{m,2}']
     label_selected_model = 10
     true_vals = None
@@ -118,7 +118,7 @@ if model == 'multi_peak':
 if model == 'broken_pl_peak':
     names = ['a1','a2','mmin','mmax','b','d', 'mu', 's', 'l']
     nargs = len(names)
-    bounds = [[1,12], [1,12], [2,10], [30,10], [0,1], [0,10],[20,50],[1,10], [0,1]]
+    bounds = [[1,12], [1,12], [2,10], [30,100], [0,1], [0,10],[20,50],[1,10], [0,1]]
     labels = ['\\beta_1', '\\beta_2', 'm_{min}', 'm_{max}', 'b', '\\delta_m', '\\mu_m', '\\sigma_m', '\\lambda_{peak}']
     label_selected_model = 11
     true_vals = None
