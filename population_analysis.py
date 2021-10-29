@@ -7,21 +7,22 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
-from loglikelihood import truncated, broken_pl, pl_peak, multi_peak
+from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak
 
 # OPTIONS
 #------------------------
 # Select dataset
 dataset = 'O3a' # 'O3', 'O3a'
 # Select a model:
-model = 'pl_peak' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak'
+model = 'broken_pl' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak'
 # Postprocessing
 postprocessing = False
 # Data folder
 folder = '/Users/stefanorinaldi/Documents/parametric/population/' # CHANGEME
 # Mass boundaries
-x_min = 3
-x_max = 95
+x_min = 4
+x_max = 60
+# Concentration parameter
 max_alpha = 10000
 #------------------------
 
@@ -29,8 +30,15 @@ folder = folder + dataset + '/'
 out_folder = folder + model + '/'
 
 # Files
-draws_file  = folder + 'mf_samples.json' # CHANGEME
-rec_file    = folder + 'log_rec_prob_gaussian.txt' # CHANGEME
+if dataset == 'O3':
+    draws_file = folder + 'mf_samples.json'
+    rec_file   = folder + 'log_m_astro.txt'
+if dataset == 'O3a':
+    draws_file = folder + 'combined_posteriors.pkl'
+    rec_file   = folder + 'log_combined_prob_mf.txt'
+
+# Comparison with DPGMM outcome
+rec = np.genfromtxt(rec_file, names = True)
 
 # Load data
 if dataset == 'O3':
@@ -44,33 +52,34 @@ if dataset == 'O3':
     for p in draws:
         samps.append(p)
     openfile.close()
-    m = np.array([float(m) for m in json_dict.keys()])
+    m = np.ascontiguousarray([float(m) for m in json_dict.keys()])
     samples = []
     for d in samps:
         samples.append(interp1d(m, d))
         
 elif dataset == 'O3a':
     openfile = open(draws_file, 'rb')
-    samples = pickle.load(openfile)
+    samps = np.array(pickle.load(openfile)).T
     openfile.close()
-    m = samples[0].x
-    
+    m = np.ascontiguousarray(rec['m'])
+    samples = []
+    for d in samps[::10]: # downsampling
+        samples.append(interp1d(m, d))
 else:
     print('Unsupported dataset')
     exit()
 
 # Boundaries, c_par and number of bins
-N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
+#N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
+N_bins = 100
 print('{0} bins between {1:.1f} and {2:.1f}'.format(N_bins, x_min, x_max))
-# Comparison with DPGMM outcome
-rec = np.genfromtxt(rec_file, names = True)
 
 
 if model == 'truncated':
-    names = ['b', 'mmin', 'mmax']
+    names = ['b', 'mmin', 'mmax', 'd']
     nargs = len(names)
-    bounds = [[1,12], [2,10], [30,100]]
-    labels = ['\\beta', 'm_{min}', 'm_{max}']
+    bounds = [[1,12], [2,10], [30,100],[0,10]]
+    labels = ['\\beta', 'm_{min}', 'm_{max}','\\delta_m']
     label_selected_model = 7 # Truncated
     true_vals = None
     model = truncated
@@ -89,7 +98,7 @@ if model == 'broken_pl':
 if model == 'pl_peak':
     names = ['l','b','mmin','d','mmax','mu','s']
     nargs = len(names)
-    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [20, 50], [1,10]]
+    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [20, 50], [1,20]]
     labels = ['\\lambda_{peak}', '\\beta', 'm_{min}', '\\delta_m', 'm_{max}', '\\mu_m', '\\sigma_m']
     label_selected_model = 9
     true_vals = [0.1,2.63,4.59,4.82,86.22,33.07,5.69]
@@ -99,12 +108,22 @@ if model == 'pl_peak':
 if model == 'multi_peak':
     names = ['l', 'lg', 'b', 'mmin', 'd', 'mmax', 'mu1', 's1', 'mu2', 's2']
     nargs = len(names)
-    bounds = [[0,1],[0,1],[1,12],[2,10],[0,10],[30,100],[20,50],[1,10],[50,100],[1,10]]
+    bounds = [[0,1],[0,1],[1,12],[2,10],[0,10],[30,100],[20,50],[1,20],[50,100],[1,20]]
     labels = ['\\lambda','\\lambda_1','\\beta','m_{min}','\\delta_m','m_{max}','\\mu_{m,1}','\\sigma_{m,1}','\\mu_{m,2}','\\sigma_{m,2}']
     label_selected_model = 10
     true_vals = None
     model = multi_peak
     model_label = 'Multi\ Peak'
+
+if model == 'broken_pl_peak':
+    names = ['a1','a2','mmin','mmax','b','d', 'mu', 's', 'l']
+    nargs = len(names)
+    bounds = [[1,12], [1,12], [2,10], [30,10], [0,1], [0,10],[20,50],[1,10], [0,1]]
+    labels = ['\\beta_1', '\\beta_2', 'm_{min}', 'm_{max}', 'b', '\\delta_m', '\\mu_m', '\\sigma_m', '\\lambda_{peak}']
+    label_selected_model = 11
+    true_vals = None
+    model = broken_pl_peak
+    model_label = 'Broken\ PowerLaw\ +\ Peak'
 
 PE = DirichletProcess(
     label_selected_model,
@@ -155,10 +174,11 @@ fig, ax = plt.subplots(figsize = (10,6))
 ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
 ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
 pdf = []
+dm = m[1]-m[0]
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
     f = model(m, *s)
-    pdf.append(f)
+    pdf.append(f/(f.sum()*dm))
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
 ax.fill_between(m, high, low, color = 'lightsalmon', alpha = 0.5)
 ax.plot(m, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
@@ -168,3 +188,6 @@ ax.set_ylabel('$p(M)$')
 ax.grid(True,dashes=(1,3))
 ax.legend(loc=0,frameon=False,fontsize=10)
 fig.savefig(os.path.join(out_folder,'compare_50.pdf'), bbox_inches='tight')
+ax.set_yscale('log')
+ax.set_ylim(1e-5, 0.25)
+fig.savefig(os.path.join(out_folder,'compare_50_log.pdf'), bbox_inches='tight')
