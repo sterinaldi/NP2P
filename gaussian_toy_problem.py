@@ -10,20 +10,24 @@ from loglikelihood import normal, uniform, exponential, cauchy, generalized_norm
 
 # OPTIONS
 #------------------------
-# Postprocessing
-postprocessing = False
-
-# Files
-samps_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/gaussian.txt'
-draws_file = '/Users/stefanorinaldi/Documents/parametric/gaussian/posterior_functions_gaussian.json' # CHANGEME
-rec_file   = '/Users/stefanorinaldi/Documents/parametric/gaussian/log_rec_prob_gaussian.txt' # CHANGEME
-
-# Output folder
-out_folder = '/Users/stefanorinaldi/Documents/parametric/' # CHANGEME
-
+# Data folder
+folder = '/Users/stefanorinaldi/Documents/parametric/gaussian_test/' # CHANGEME
+# Concentration parameter
+max_alpha = 10000
 # Select a model:
 model = 'normal' # 'normal', 'uniform', 'exponential', 'cauchy', 'gen_normal'
-out_folder = out_folder + model + '/'
+# Postprocessing
+postprocessing = False
+#------------------------
+
+# Files
+samps_file = folder + 'gaussian.txt'
+draws_file = folder + 'posterior_functions_gaussian.json'
+rec_file   = folder + 'log_rec_prob_gaussian.txt'
+
+out_folder = folder + model + '/'
+
+# Model
 
 if model == 'normal':
     names = ['mean', 'sigma']
@@ -75,7 +79,6 @@ if model == 'gen_normal':
     model = generalized_normal
     model_label = 'Generalized\ Normal'
 
-
 # Load data
 openfile = open(draws_file, 'r')
 json_dict = json.load(openfile)
@@ -95,8 +98,7 @@ for d in samps:
 # Load samples
 ss = np.genfromtxt(samps_file)
 
-# Boundaries, c_par and number of bins
-max_alpha = 10000
+# Boundaries and number of bins
 x_min = np.min(ss)
 x_max = np.max(ss)
 N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
@@ -130,6 +132,7 @@ if not postprocessing:
 else:
     post = np.genfromtxt(os.path.join(out_folder,'posterior.dat'),names=True)
 
+# Postprocessing
 labels = labels + ['\\alpha','\\alpha/N']
 par_names = names
 names = names + ['a']
@@ -137,6 +140,7 @@ if true_vals is not None:
     true_vals = true_vals + [1, 1]
 samps = np.column_stack([post[lab] for lab in names] + [post['a']/N_bins)])
 
+# Plots
 fig = corner.corner(samps,
        labels= [r'${0}$'.format(lab) for lab in labels],
        quantiles=[0.05, 0.16, 0.5, 0.84, 0.95],
@@ -164,4 +168,3 @@ ax.set_ylabel('$p(x)$')
 ax.grid(True,dashes=(1,3))
 ax.legend(loc=0,frameon=False,fontsize=10)
 fig.savefig(os.path.join(out_folder,'compare_50.pdf'), bbox_inches='tight')
-
