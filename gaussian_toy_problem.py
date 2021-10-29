@@ -33,6 +33,7 @@ if model == 'normal':
     label_selected_model = 0 # Normal
     true_vals = [40, 5]
     model = normal
+    model_label = 'Normal'
 
 if model == 'exponential':
     names = ['x0', 'l']
@@ -42,6 +43,7 @@ if model == 'exponential':
     label_selected_model = 4 # Exponential
     true_vals = None
     model = exponential
+    model_label = 'Exponential'
     
 if model == 'uniform':
     names = ['x_min', 'x_max']
@@ -51,6 +53,7 @@ if model == 'uniform':
     label_selected_model = 3 # Uniform
     true_vals = None
     model = uniform
+    model_label = 'Uniform'
 
 if model == 'cauchy':
     names = ['x0', 'g']
@@ -60,6 +63,7 @@ if model == 'cauchy':
     label_selected_model = 5 # Cauchy
     true_vals = None
     model = cauchy
+    model_label = 'Cauchy'
 
 if model == 'gen_normal':
     names = ['x0','s','b']
@@ -69,6 +73,7 @@ if model == 'gen_normal':
     label_selected_model = 6 # Generalized Normal
     true_vals = None
     model = generalized_normal
+    model_label = 'Generalized\ Normal'
 
 
 # Load data
@@ -130,7 +135,7 @@ par_names = names
 names = names + ['a']
 if true_vals is not None:
     true_vals = true_vals + [1, 1]
-samps = np.column_stack([post[lab] for lab in names] + [post['a']/N_bins])
+samps = np.column_stack([post[lab] for lab in names] + [post['a']/N_bins)])
 
 fig = corner.corner(samps,
        labels= [r'${0}$'.format(lab) for lab in labels],
@@ -141,22 +146,22 @@ fig = corner.corner(samps,
 fig.savefig(os.path.join(out_folder,'joint_posterior.pdf'), bbox_inches='tight')
 
 # Comparison: (H)DPGMM vs model
-x = np.linspace(PE.x_min,PE.x_max,100)
-fig = plt.figure()
-ax  = fig.add_subplot(111)
-ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'magenta', alpha = 0.5)
-ax.plot(rec['m'], np.exp(rec['50']), color = 'r')
+fig, ax = plt.subplots(figsize = (10,6))
+ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
+ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
 pdf = []
 for i,si in enumerate(post):
-    # Smarter way to update?
     s = np.array([si[lab] for lab in par_names])
-    f = model(x, *s)
+    f = model(m, *s)
     pdf.append(f)
-    if i%10 == 0:
-        ax.plot(x, f, color='turquoise', linewidth = 0.1)
-l,m,h = np.percentile(pdf,[5,50,95],axis=0)
-ax.fill_between(x, l, h, color = 'turquoise', alpha = 0.5)
-ax.plot(x, m, color = 'k')
-ax.set_xlim(x_min,x_max)
 
+low,med,high = np.percentile(pdf,[5,50,95],axis=0)
+ax.fill_between(m, high, low, color = 'lightsalmon', alpha = 0.5)
+ax.plot(m, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
+ax.set_xlim(x_min, x_max)
+ax.set_xlabel('$x$')
+ax.set_ylabel('$p(x)$')
+ax.grid(True,dashes=(1,3))
+ax.legend(loc=0,frameon=False,fontsize=10)
 fig.savefig(os.path.join(out_folder,'compare_50.pdf'), bbox_inches='tight')
+
