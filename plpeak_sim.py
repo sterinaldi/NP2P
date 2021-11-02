@@ -43,11 +43,11 @@ rec = np.genfromtxt(rec_file, names = True)
 openfile = open(draws_file, 'rb')
 samps = np.array(pickle.load(openfile)).T
 openfile.close()
-x = np.ascontiguousarray([xi if x_min < xi < x_max for xi in samps[0].x)
+x = np.ascontiguousarray([xi for xi in samps[0].x if x_min < xi < x_max])
 logdx = np.log(x[1]-x[0])
 samples = []
 for d in samps:
-    samples.append(d.y[np.where(x_min < xi < x_max for xi in d.x)] - logdx)
+    samples.append(d.y[np.where([x_min < xi < x_max for xi in d.x])] + logdx)
 samples = np.array([s - logsumexp(s) for s in samples])
 # MEDIAN
 #x = np.array(m[np.where([x_min < mi < x_max for mi in rec['m']])])
@@ -63,7 +63,7 @@ PE = DirichletProcess(
     names,
     bounds,
     samples,
-    x = x
+    x = x,
     max_a = max_alpha,
     out_folder = out_folder
     )
@@ -101,25 +101,24 @@ fig = corner.corner(samps,
 fig.savefig(os.path.join(out_folder,'joint_posterior.pdf'), bbox_inches='tight')
 
 # Comparison: (H)DPGMM vs model
-dm = m[1]-m[0]
+dx = x[1]-x[0]
 fig, ax = plt.subplots(figsize = (10,6))
 #ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
 #ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
 pr = []
 for d in samples:
-    p = np.exp(d(m))*dm
+    p = np.exp(d)/dx
     pr.append(p)
-    ax.plot(m, p/np.sum(p), lw = 0.1, alpha=0.5)
-ax.plot(m,np.array(pr).mean(axis = 0))
+    ax.plot(x, p, lw = 0.1, alpha=0.5)
+ax.plot(x,np.array(pr).mean(axis = 0))
 pdf = []
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
-    f = model(m, *s)
-    pdf.append(f/(f.sum()*dm))
+    f = model(x, *s)
+    pdf.append(f)
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
-print(np.sum(med*dm))
-ax.fill_between(m, high*dm, low*dm, color = 'lightsalmon', alpha = 0.5)
-ax.plot(m, med*dm, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
+ax.fill_between(x, high, low, color = 'lightsalmon', alpha = 0.5)
+ax.plot(x, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
 ax.set_xlim(x_min, x_max)
 ax.set_xlabel('$M\ [M_\\odot]$')
 ax.set_ylabel('$p(M)$')

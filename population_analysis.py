@@ -7,12 +7,13 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
+from scipy.special import logsumexp
 from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak
 
 # OPTIONS
 #------------------------
 # Select dataset
-dataset = 'O3a' # 'O3', 'O3a'
+dataset = 'O3a' # 'O3', 'O3a', 'hdp'
 # Select a model:
 model = 'pl_peak' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak'
 # Postprocessing
@@ -36,6 +37,9 @@ if dataset == 'O3':
 if dataset == 'O3a':
     draws_file = folder + 'combined_posteriors.pkl'
     rec_file   = folder + 'log_combined_prob_mf.txt'
+if dataset == 'hdp':
+    draws_file = folder + 'astro_samples.json'
+    rec_file   = folder + 'rec_prob.txt'
 
 # Comparison with DPGMM outcome
 rec = np.genfromtxt(rec_file, names = True)
@@ -44,34 +48,44 @@ rec = np.genfromtxt(rec_file, names = True)
 if dataset == 'O3':
     openfile = open(draws_file, 'r')
     json_dict = json.load(openfile)
+    x = np.ascontiguousarray([xi for xi in json_dict[0] if x_min < xi < x_max])
+    logdx = np.log(x[1] - x[0])
     draws = []
-    samps = []
+    for i, p in enumerate(json_dict[1:]):
+        draws.append(p)
+    samples = np.array([d[np.where([xi for xi in x if x_min < xi < x_max])] + logdx for d in np.array(draws).T])
+    samples = np.array([s - logsumexp(s) for s in samples])
+    openfile.close()
+
+elif dataset == 'hdp':
+    openfile = open(draws_file, 'r')
+    json_dict = json.load(openfile)
+    x = np.array([float(xi) for xi in json_dict.keys() if x_min < float(xi) < x_max])
+    logdx = np.log(x[1] - x[0])
+    draws = []
     for i, p in enumerate(json_dict.values()):
         draws.append(p)
     draws = np.array(draws).T
-    for p in draws:
-        samps.append(p)
+    samples = np.array([d[np.where([xi for xi in x if x_min < xi < x_max])] + logdx for d in np.array(draws).T])
+    samples = np.array([s - logsumexp(s) for s in samples])
     openfile.close()
-    m = np.ascontiguousarray([float(m) for m in json_dict.keys()])
-    samples = []
-    for d in samps:
-        samples.append(interp1d(m, d))
-        
+    
 elif dataset == 'O3a':
     openfile = open(draws_file, 'rb')
     samps = np.array(pickle.load(openfile)).T
     openfile.close()
-    m = np.ascontiguousarray(rec['m'])
+    x = np.array([xi for xi in rec['m'] if x_min < xi < x_max])
+    logdx = np.log(x[1]-x[0])
     samples = []
-    for d in samps[::10]: # downsampling
-        samples.append(interp1d(m, d))
+    for d in samps:
+        samples.append(d[np.where([x_min < xi < x_max for xi in x])] + logdx)
+    samples = np.array([s - logsumexp(s) for s in samples])
+
 else:
     print('Unsupported dataset')
     exit()
 
-# Boundaries, c_par and number of bins
-#N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
-N_bins = 100
+N_bins = len(x)
 print('{0} bins between {1:.1f} and {2:.1f}'.format(N_bins, x_min, x_max))
 
 
@@ -125,10 +139,8 @@ PE = DirichletProcess(
     names,
     bounds,
     samples,
-    x_min = x_min,
-    x_max = x_max,
-    max_a = max_alpha*N_bins,
-    N_bins = N_bins,
+    x = x,
+    max_a = max_alpha,
     out_folder = out_folder
     )
     
@@ -169,14 +181,14 @@ fig, ax = plt.subplots(figsize = (10,6))
 ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
 ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
 pdf = []
-dm = m[1]-m[0]
+dx = x[1]-x[0]
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
-    f = model(m, *s)
-    pdf.append(f/(f.sum()*dm))
+    f = model(x, *s)
+    pdf.append(f)
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
-ax.fill_between(m, high, low, color = 'lightsalmon', alpha = 0.5)
-ax.plot(m, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
+ax.fill_between(x, high, low, color = 'lightsalmon', alpha = 0.5)
+ax.plot(x, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
 ax.set_xlim(x_min, x_max)
 ax.set_xlabel('$M\ [M_\\odot]$')
 ax.set_ylabel('$p(M)$')

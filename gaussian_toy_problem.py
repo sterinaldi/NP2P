@@ -106,7 +106,7 @@ x = np.array(m[np.where([x_min < mi < x_max for mi in m])])
 logdx = np.log(x[1]-x[0])
 samples = []
 for d in samps:
-    samples.append(d[np.where([x_min < mi < x_max for mi in m])]+logdx)
+    samples.append(d[np.where([x_min < mi < x_max for mi in m])] + logdx)
 samples = np.array([s - logsumexp(s) for s in samples])
 
 ## MEDIAN
@@ -165,12 +165,11 @@ ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametr
 pdf = []
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
-    f = model(m, *s)
+    f = model(x, *s)
     pdf.append(f)
-
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
-ax.fill_between(m, high, low, color = 'lightsalmon', alpha = 0.5)
-ax.plot(m, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
+ax.fill_between(x, high, low, color = 'lightsalmon', alpha = 0.5)
+ax.plot(x, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
 ax.set_xlim(x_min, x_max)
 ax.set_xlabel('$x$')
 ax.set_ylabel('$p(x)$')
