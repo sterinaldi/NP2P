@@ -6,6 +6,7 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
+from scipy.special import logsumexp
 from loglikelihood import normal, uniform, exponential, cauchy, generalized_normal
 
 # OPTIONS
@@ -79,6 +80,16 @@ if model == 'gen_normal':
     model = generalized_normal
     model_label = 'Generalized\ Normal'
 
+# Comparison with DPGMM outcome
+rec = np.genfromtxt(rec_file, names = True)
+
+# Load samples
+ss = np.genfromtxt(samps_file)
+
+# Boundaries and number of bins
+x_min = np.min(ss)
+x_max = np.max(ss)
+
 # Load data
 openfile = open(draws_file, 'r')
 json_dict = json.load(openfile)
@@ -91,31 +102,29 @@ for p in draws[1:]:
     samps.append(p)
 openfile.close()
 m = np.array([float(m) for m in json_dict.keys()])
+x = np.array(m[np.where([x_min < mi < x_max for mi in m])])
+logdx = np.log(x[1]-x[0])
 samples = []
 for d in samps:
-    samples.append(interp1d(m, d))
+    samples.append(d[np.where([x_min < mi < x_max for mi in m])]+logdx)
+samples = np.array([s - logsumexp(s) for s in samples])
 
-# Load samples
-ss = np.genfromtxt(samps_file)
+## MEDIAN
+#x = np.array(m[np.where([x_min < mi < x_max for mi in rec['m']])])
+#logdx = np.log(x[1]-x[0])
+#s = rec['50'][np.where([x_min < mi < x_max for mi in rec['m']])] - logdx
+#samples = np.array([s - logsumexp(s)])
 
-# Boundaries and number of bins
-x_min = np.min(ss)
-x_max = np.max(ss)
-N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
+N_bins = len(x)
 print('{0} bins between {1:.1f} and {2:.1f}'.format(N_bins, x_min, x_max))
-
-# Comparison with DPGMM outcome
-rec = np.genfromtxt(rec_file, names = True)
 
 PE = DirichletProcess(
     label_selected_model,
     names,
     bounds,
     samples,
-    x_min = x_min,
-    x_max = x_max,
-    max_a = max_alpha*N_bins,
-    N_bins = N_bins,
+    x = x,
+    max_a = max_alpha,
     out_folder = out_folder
     )
     
@@ -138,7 +147,7 @@ par_names = names
 names = names + ['a']
 if true_vals is not None:
     true_vals = true_vals + [1, 1]
-samps = np.column_stack([post[lab] for lab in names] + [post['a']/N_bins)])
+samps = np.column_stack([post[lab] for lab in names] + [post['a']/len(x)])
 
 # Plots
 fig = corner.corner(samps,
@@ -168,3 +177,6 @@ ax.set_ylabel('$p(x)$')
 ax.grid(True,dashes=(1,3))
 ax.legend(loc=0,frameon=False,fontsize=10)
 fig.savefig(os.path.join(out_folder,'compare_50.pdf'), bbox_inches='tight')
+ax.set_yscale('log')
+ax.set_ylim(1e-5, 0.1)
+fig.savefig(os.path.join(out_folder,'compare_50_log.pdf'), bbox_inches='tight')

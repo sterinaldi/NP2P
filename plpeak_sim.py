@@ -6,17 +6,18 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
+from scipy.special import logsumexp
 from loglikelihood import tapered_plpeak
 
 # OPTIONS
 #------------------------
 # Postprocessing
-postprocessing = False
+postprocessing = True
 # Data folder
 folder = '/Users/stefanorinaldi/Documents/parametric/plpeak/' # CHANGEME
 # Mass boundaries
-x_min = 4
-x_max = 90
+x_min = 10
+x_max = 129
 # Concentration parameter
 max_alpha = 10000
 # Model parameters
@@ -24,12 +25,11 @@ names = ['b', 'mmin', 'mmax', 'lmin', 'lmax', 'mu', 's', 'w']
 bounds = [[0,5], [5,20], [60,100],[2,20], [2,20],[40,70],[1,10],[0,1]]
 labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}', '\\mu_m', '\\sigma_m', 'w']
 label_selected_model = 12 # Tapered PowerLaw + Peak
-true_vals = [0.5,90, 15, 10, 5, 55, 6, 0.9]
+true_vals = [0.5,15, 90, 5, 10, 55, 6, 0.9]
 model = tapered_plpeak
 model_label = 'Tapered\ PowerLaw\ +\ Peak'
 #------------------------
 
-folder = folder + dataset + '/'
 out_folder = folder + 'inference/'
 
 # Files
@@ -43,14 +43,19 @@ rec = np.genfromtxt(rec_file, names = True)
 openfile = open(draws_file, 'rb')
 samps = np.array(pickle.load(openfile)).T
 openfile.close()
-m = np.ascontiguousarray(rec['m'])
+x = np.ascontiguousarray([xi if x_min < xi < x_max for xi in samps[0].x)
+logdx = np.log(x[1]-x[0])
 samples = []
-for d in samps[len(samps)//2:]: # downsampling
-    samples.append(interp1d(m, d))
+for d in samps:
+    samples.append(d.y[np.where(x_min < xi < x_max for xi in d.x)] - logdx)
+samples = np.array([s - logsumexp(s) for s in samples])
+# MEDIAN
+#x = np.array(m[np.where([x_min < mi < x_max for mi in rec['m']])])
+#logdx = np.log(x[1]-x[0])
+#s = rec['50'][np.where([x_min < mi < x_max for mi in rec['m']])] - logdx
+#samples = np.array([s - logsumexp(s)])
 
-# Boundaries, c_par and number of bins
-#N_bins = len(np.where([x_min <= mi <= x_max for mi in m])[0])
-N_bins = 100
+N_bins = len(x)
 print('{0} bins between {1:.1f} and {2:.1f}'.format(N_bins, x_min, x_max))
 
 PE = DirichletProcess(
@@ -58,10 +63,8 @@ PE = DirichletProcess(
     names,
     bounds,
     samples,
-    x_min = x_min,
-    x_max = x_max,
-    max_a = max_alpha*N_bins,
-    N_bins = N_bins,
+    x = x
+    max_a = max_alpha,
     out_folder = out_folder
     )
     
@@ -98,18 +101,25 @@ fig = corner.corner(samps,
 fig.savefig(os.path.join(out_folder,'joint_posterior.pdf'), bbox_inches='tight')
 
 # Comparison: (H)DPGMM vs model
-fig, ax = plt.subplots(figsize = (10,6))
-ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
-ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
-pdf = []
 dm = m[1]-m[0]
+fig, ax = plt.subplots(figsize = (10,6))
+#ax.fill_between(rec['m'], np.exp(rec['95']), np.exp(rec['5']), color = 'mediumturquoise', alpha = 0.5)
+#ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
+pr = []
+for d in samples:
+    p = np.exp(d(m))*dm
+    pr.append(p)
+    ax.plot(m, p/np.sum(p), lw = 0.1, alpha=0.5)
+ax.plot(m,np.array(pr).mean(axis = 0))
+pdf = []
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
     f = model(m, *s)
     pdf.append(f/(f.sum()*dm))
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
-ax.fill_between(m, high, low, color = 'lightsalmon', alpha = 0.5)
-ax.plot(m, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
+print(np.sum(med*dm))
+ax.fill_between(m, high*dm, low*dm, color = 'lightsalmon', alpha = 0.5)
+ax.plot(m, med*dm, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))
 ax.set_xlim(x_min, x_max)
 ax.set_xlabel('$M\ [M_\\odot]$')
 ax.set_ylabel('$p(M)$')
