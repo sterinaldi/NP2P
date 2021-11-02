@@ -208,7 +208,7 @@ cdef np.ndarray[double,mode="c",ndim=1] _tapered_plpeak(np.ndarray[double,mode="
     cdef double[:] res_view = res
     cdef double N = (b-1)/(mmin**(1-b)-mmax**(1-b))
     for i in range(n):
-        res_view[i] = (1-l)*N*x[i]**(-b)*(1+erf((x[i]-mmin)/(lmin)))*(1+erf((mmax-x[i])/lmax))/4. + b*_normal_d(x[i], mu, s)
+        res_view[i] = (1-l)*N*x[i]**(-b)*(1+erf((x[i]-mmin)/(lmin)))*(1+erf((mmax-x[i])/lmax))/4. + l*_normal_d(x[i], mu, s)
     return res
 
 def tapered_plpeak(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax, double mu, double s, double l):
@@ -218,7 +218,7 @@ def tapered_plpeak(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, 
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
 
-def log_likelihood(LivePoint LP,
+def cython_log_likelihood(LivePoint LP,
                    np.ndarray[double,mode="c",ndim=1] x,
                    np.ndarray[double,mode="c",ndim=2] draws,
                    unsigned int model):
@@ -256,7 +256,7 @@ def log_likelihood(LivePoint LP,
         m = _tapered_plpeak(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'], LP['mu'], LP['s'], LP['w'])*dx
     else:
         print('model not supported, screw you!')
-        exit()
+        return -np.inf
     cdef double concentration = LP['a']
     cdef double logL = _log_likelihood(m, draws, concentration)
     return logL
@@ -265,13 +265,13 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
                             np.ndarray[double,mode="c",ndim=2] draws,
                             double concentration):
     """
-    L = \frac{1}{N}\sum_i \Gamma(a)\prod_j \frac{p^{a*m_j-1)}{\Gamma(a*m_j)}
+    L = \frac{1}{N}\sum_i \Gamma(a)\prod_j \frac{p_{i,j}^{a*m_j-1)}{\Gamma(a*m_j)}
     """
     cdef unsigned int Nbins = draws.shape[1]
     cdef unsigned int Ndraws = draws.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] a = np.zeros(Nbins, dtype=np.double)
     
-    # compute the nnormalisation constants
+    # compute the normalisation constants
     cdef unsigned int i,j
     cdef double l
     cdef double logL = -HUGE_VAL
@@ -289,6 +289,6 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
         for i in range(Nbins):
             l += (a[i]-1.0)*draws[j,i]
 
-        logL = log_add(logL,l + lognorm)
+        logL = log_add(logL,l)
     
-    return logL-log(Ndraws)
+    return logL - log(Ndraws) + lognorm
