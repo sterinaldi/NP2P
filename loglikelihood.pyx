@@ -8,6 +8,7 @@ from libc.math cimport log, exp, HUGE_VAL, exp, sqrt, M_PI, fabs
 from scipy.special.cython_special cimport gammaln, erf, gamma
 cimport numpy as np
 import numpy as np
+from numpy import random
 
 cdef np.ndarray[double,mode="c",ndim=1] _normal(np.ndarray[double,mode="c",ndim=1] x, double x0, double s):
     cdef unsigned int i
@@ -214,6 +215,22 @@ cdef np.ndarray[double,mode="c",ndim=1] _tapered_plpeak(np.ndarray[double,mode="
 def tapered_plpeak(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax, double mu, double s, double l):
     return _tapered_plpeak(x, b, mmin, mmax, lmin, lmax, mu, s, l)
 
+cdef np.ndarray[double,mode="c",ndim=1] _tapered_pl(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    cdef double app, N = 0.
+    for i in range(n):
+        app = x[i]**(-b)*(1+erf((x[i]-mmin)/(lmin)))*(1+erf((mmax-x[i])/(lmax)))/4
+        res_view[i] = app
+        N += app
+    for i in range(n):
+        res_view[i] = res_view[i]/N
+    return res
+
+def tapered_pl(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax):
+    return _tapered_pl(x, b, mmin, mmax, lmin, lmax)
 ########################
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
@@ -254,6 +271,8 @@ def cython_log_likelihood(LivePoint LP,
         m = _broken_pl_peak(x, LP['a1'], LP['a2'], LP['mmin'], LP['mmax'], LP['b'], LP['d'], LP['mu'], LP['s'], LP['l'])*dx
     elif model == 12:
         m = _tapered_plpeak(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'], LP['mu'], LP['s'], LP['w'])*dx
+    elif model == 13:
+        m = _tapered_pl(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'])*dx
     else:
         print('model not supported, screw you!')
         return -np.inf
