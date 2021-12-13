@@ -296,8 +296,9 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
     cdef double logL = -HUGE_VAL
     cdef double global_alpha = 0.0
     cdef double g = 0.0
+    cdef double N = np.sum(m)
     for i in range(Nbins):
-        a[i] = concentration*m[i]
+        a[i] = concentration*m[i]/N
         g += gammaln(a[i])
         global_alpha += a[i]
     
@@ -311,3 +312,8 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
         logL = log_add(logL,l)
     
     return logL - log(Ndraws) + lognorm
+
+def log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
+                            np.ndarray[double,mode="c",ndim=2] draws,
+                            double concentration):
+    return _log_likelihood(m, draws, concentration)
