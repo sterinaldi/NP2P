@@ -112,7 +112,7 @@ samples = np.array([s - logsumexp(s) for s in samples])
 ## MEDIAN
 #x = np.array(m[np.where([x_min < mi < x_max for mi in rec['m']])])
 #logdx = np.log(x[1]-x[0])
-#s = rec['50'][np.where([x_min < mi < x_max for mi in rec['m']])] - logdx
+#s = rec['50'][np.where([x_min < mi < x_max for mi in rec['m']])] + logdx
 #samples = np.array([s - logsumexp(s)])
 
 N_bins = len(x)
