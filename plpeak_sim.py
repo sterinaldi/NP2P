@@ -7,27 +7,28 @@ import corner
 import os
 from scipy.interpolate import interp1d
 from scipy.special import logsumexp
-from loglikelihood import tapered_plpeak
+from scipy.stats import dirichlet
+from loglikelihood import tapered_pl
 
 # OPTIONS
 #------------------------
 # Postprocessing
-postprocessing = True
+postprocessing = False
 # Data folder
-folder = '/Users/stefanorinaldi/Documents/parametric/plpeak/' # CHANGEME
+folder = '/Users/stefanorinaldi/Documents/parametric/pl/' # CHANGEME
 # Mass boundaries
 x_min = 10
-x_max = 129
+x_max = 85
 # Concentration parameter
 max_alpha = 10000
 # Model parameters
-names = ['b', 'mmin', 'mmax', 'lmin', 'lmax', 'mu', 's', 'w']
-bounds = [[0,5], [5,20], [60,100],[2,20], [2,20],[40,70],[1,10],[0,1]]
-labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}', '\\mu_m', '\\sigma_m', 'w']
-label_selected_model = 12 # Tapered PowerLaw + Peak
-true_vals = [0.5,15, 90, 5, 10, 55, 6, 0.9]
-model = tapered_plpeak
-model_label = 'Tapered\ PowerLaw\ +\ Peak'
+names = ['b', 'mmin', 'mmax', 'lmin', 'lmax']
+bounds = [[0,5], [5,40], [50,120],[1,30], [1,30]]
+labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}']
+label_selected_model = 13 # Tapered PowerLaw
+true_vals = [1.2, 20, 75, 10, 20]
+model = tapered_pl
+model_label = 'Tapered\ PowerLaw'
 #------------------------
 
 out_folder = folder + 'inference/'
@@ -43,7 +44,7 @@ rec = np.genfromtxt(rec_file, names = True)
 openfile = open(draws_file, 'rb')
 samps = np.array(pickle.load(openfile)).T
 openfile.close()
-x = np.ascontiguousarray([xi for xi in samps[0].x if x_min < xi < x_max])
+x = np.array([xi for xi in samps[0].x if x_min < xi < x_max])
 logdx = np.log(x[1]-x[0])
 samples = []
 for d in samps:
@@ -57,7 +58,7 @@ samples = np.array([s - logsumexp(s) for s in samples])
 
 N_bins = len(x)
 print('{0} bins between {1:.1f} and {2:.1f}'.format(N_bins, x_min, x_max))
-
+print(label_selected_model)
 PE = DirichletProcess(
     label_selected_model,
     names,
@@ -107,10 +108,10 @@ fig, ax = plt.subplots(figsize = (10,6))
 #ax.plot(rec['m'], np.exp(rec['50']), color = 'steelblue', label = '$Non-parametric$')
 pr = []
 for d in samples:
-    p = np.exp(d)/dx
+    p = np.exp(d)
     pr.append(p)
     ax.plot(x, p, lw = 0.1, alpha=0.5)
-ax.plot(x,np.array(pr).mean(axis = 0))
+ax.plot(x, np.array(pr).mean(axis = 0))#np.percentile(np.array(pr), 50, axis = 0))
 pdf = []
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
