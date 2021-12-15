@@ -131,7 +131,7 @@ PE = DirichletProcess(
 if not postprocessing:
     work = cpnest.CPNest(PE,
                         verbose = 2,
-                        nlive = 1000,
+                        nlive = 2000,
                         maxmcmc = 5000,
                         nensemble = 4,
                         output  = out_folder

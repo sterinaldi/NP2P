@@ -237,7 +237,7 @@ cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x))
 
 def cython_log_likelihood(LivePoint LP,
                    np.ndarray[double,mode="c",ndim=1] x,
-                   np.ndarray[double,mode="c",ndim=2] draws,
+                   np.ndarray[double,mode="c",ndim=1] suffstats,
                    unsigned int model):
 
     cdef int i
@@ -277,23 +277,23 @@ def cython_log_likelihood(LivePoint LP,
         print('model not supported, screw you!')
         return -np.inf
     cdef double concentration = LP['a']
-    cdef double logL = _log_likelihood(m, draws, concentration)
+    cdef double logL = _log_likelihood(m, suffstats, concentration)
     return logL
     
 cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
-                            np.ndarray[double,mode="c",ndim=2] draws,
+                            np.ndarray[double,mode="c",ndim=1] suffstats,
                             double concentration):
     """
     L = \frac{1}{N}\sum_i \Gamma(a)\prod_j \frac{p_{i,j}^{a*m_j-1)}{\Gamma(a*m_j)}
     """
-    cdef unsigned int Nbins = draws.shape[1]
-    cdef unsigned int Ndraws = draws.shape[0]
+    cdef unsigned int Nbins = suffstats.shape[0]
+#    cdef unsigned int Ndraws = draws.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] a = np.zeros(Nbins, dtype=np.double)
     
     # compute the normalisation constants
     cdef unsigned int i,j
     cdef double l
-    cdef double logL = -HUGE_VAL
+    cdef double logL = 0.0
     cdef double global_alpha = 0.0
     cdef double g = 0.0
     cdef double N = np.sum(m)
@@ -301,19 +301,22 @@ cdef double _log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
         a[i] = concentration*m[i]/N
         g += gammaln(a[i])
         global_alpha += a[i]
+        logL += (a[i]-1)*suffstats[i]
     
     cdef double lognorm = gammaln(global_alpha) - g
     
-    for j in range(Ndraws):
-        l = 0.0
-        for i in range(Nbins):
-            l += (a[i]-1.0)*draws[j,i]
 
-        logL = log_add(logL,l)
+#    for j in range(Ndraws):
+#        l = 0.0
+#        for i in range(Nbins):
+#            l += (a[i]-1.0)*draws[j,i]
+#
+#        logL = log_add(logL,l)
     
-    return logL - log(Ndraws) + lognorm
+    return logL + lognorm # - log(Ndraws)
 
 def log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
-                            np.ndarray[double,mode="c",ndim=2] draws,
+                            np.ndarray[double,mode="c",ndim=1] suffstats,
                             double concentration):
-    return _log_likelihood(m, draws, concentration)
+    return _log_likelihood(m, suffstats, concentration)
+

@@ -1,7 +1,7 @@
 import cpnest.model
 import numpy as np
-from loglikelihood import cython_log_likelihood
-from scipy.special import logsumexp
+from loglikelihood import cython_log_likelihood, normal, tapered_pl
+from scipy.special import logsumexp, gammaln
 
 class DirichletProcess(cpnest.model.Model):
 
@@ -9,13 +9,13 @@ class DirichletProcess(cpnest.model.Model):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
+        self.suffstats  = np.mean(samples, axis = 0)
         self.N          = len(samples)
         self.labels     = pars
         self.names      = pars + ['a']
         self.bounds     = bounds + [[0, max_a*len(x)]]
         self.prior_pars = prior_pars
         self.model      = model
-        self.draws      = samples
         self.x          = x
         self.dx         = np.abs(self.x[1] - self.x[0])
         self.K          = len(x)
@@ -30,4 +30,4 @@ class DirichletProcess(cpnest.model.Model):
         return logP
     
     def log_likelihood(self, x):
-        return cython_log_likelihood(x, self.x, self.draws, self.model)
+        return cython_log_likelihood(x, self.x, self.suffstats, self.model)
