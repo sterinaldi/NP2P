@@ -311,6 +311,8 @@ def cython_log_likelihood(LivePoint LP,
         m = _tapered_pl(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'])*dx
     elif model == 14:
         m = _pl_peak_smoothed(x, LP['l'], LP['b'], LP['mmin'], LP['d_min'], LP['mmax'], LP['d_max'], LP['mu'], LP['s'])*dx
+    elif model == 15:
+        m = _chi2(x, LP['df'])*dx
     else:
         print('model not supported, screw you!')
         return -np.inf
