@@ -2,54 +2,72 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ParEst import DirichletProcess
 import pickle
+import json
 import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
 from scipy.special import logsumexp
 from scipy.stats import dirichlet
-from loglikelihood import tapered_pl
+from loglikelihood import tapered_plpeak
 
 # OPTIONS
 #------------------------
 # Postprocessing
 postprocessing = False
 # Data folder
-folder = '/Users/stefanorinaldi/Documents/parametric/pl/' # CHANGEME
+folder = '/Users/stefanorinaldi/Documents/parametric/mf/' # CHANGEME
 # Mass boundaries
-x_min = 10
-x_max = 85
+x_min = 30
+x_max = 80
 # Concentration parameter
 max_alpha = 10000
 # Model parameters
-names = ['b', 'mmin', 'mmax', 'lmin', 'lmax']
-bounds = [[0,5], [5,40], [50,120],[1,30], [1,30]]
-labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}']
-label_selected_model = 13 # Tapered PowerLaw
-true_vals = [1.2, 20, 75, 10, 20]
-model = tapered_pl
+names = ['b', 'mmin', 'mmax', 'lmin', 'lmax', 'mu', 's', 'w']
+bounds = [[0,5], [5,40], [50,120],[1,30], [1,30], [40,70], [1,10], [0,1]]
+labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}', '\\mu', '\\sigma', 'w']
+label_selected_model = 12 # Tapered PowerLaw
+true_vals = [2., 30., 100., 4., 4., 55., 4., 0.2]
+model = tapered_plpeak
 model_label = 'Tapered\ PowerLaw'
 #------------------------
 
 out_folder = folder + 'inference/'
 
 # Files
-draws_file = folder + 'samples.pkl'
+draws_file = folder + 'samples.json'
 rec_file   = folder + 'reconstruction.txt'
+samps_file = folder + 'samples.txt'
 
 # Comparison with DPGMM outcome
 rec = np.genfromtxt(rec_file, names = True)
 
+# Load samples
+ss = np.genfromtxt(samps_file)
+
+# Boundaries and number of bins
+x_min = np.min(ss)
+x_max = np.max(ss)
+
 # Load data
-openfile = open(draws_file, 'rb')
-samps = np.array(pickle.load(openfile)).T
+openfile = open(draws_file, 'r')
+json_dict = json.load(openfile)
+draws = []
+samps = []
+for i, p in enumerate(json_dict.values()):
+    draws.append(p)
+draws = np.array(draws).T
+for p in draws[1:]:
+    samps.append(p)
 openfile.close()
-x = np.array([xi for xi in samps[0].x if x_min < xi < x_max])
+m = np.array([float(m) for m in json_dict.keys()])
+x = np.array(m[np.where([x_min < mi < x_max for mi in m])])
 logdx = np.log(x[1]-x[0])
 samples = []
 for d in samps:
-    samples.append(d.y[np.where([x_min < xi < x_max for xi in d.x])] + logdx)
+    samples.append(d[np.where([x_min < mi < x_max for mi in m])] + logdx)
 samples = np.array([s - logsumexp(s) for s in samples])
+
 # MEDIAN
 #x = np.array(m[np.where([x_min < mi < x_max for mi in rec['m']])])
 #logdx = np.log(x[1]-x[0])
@@ -116,7 +134,7 @@ pdf = []
 for i,si in enumerate(post):
     s = np.array([si[lab] for lab in par_names])
     f = model(x, *s)
-    pdf.append(f)
+    pdf.append(f/f.sum())
 low,med,high = np.percentile(pdf,[5,50,95],axis=0)
 ax.fill_between(x, high, low, color = 'lightsalmon', alpha = 0.5)
 ax.plot(x, med, color = 'r', lw = 0.5, label = '${0}$'.format(model_label))

@@ -8,7 +8,7 @@ import corner
 import os
 from scipy.interpolate import interp1d
 from scipy.special import logsumexp
-from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak
+from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak, pl_peak_smoothed
 
 # OPTIONS
 #------------------------
@@ -108,12 +108,12 @@ if model == 'broken_pl':
     model_label = 'Broken\ PowerLaw'
 
 if model == 'pl_peak':
-    names = ['l','b','mmin','d','mmax','mu','s']
-    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [20, 50], [1,10]]
-    labels = ['\\lambda_{peak}', '\\beta', 'm_{min}', '\\delta_m', 'm_{max}', '\\mu_m', '\\sigma_m']
-    label_selected_model = 9
-    true_vals = [0.1,2.63,4.59,4.82,86.22,33.07,5.69]
-    model = pl_peak
+    names = ['l','b','mmin','d_min','mmax','d_max', 'mu','s']
+    bounds = [[0,1], [1,12], [2,10], [0,10], [30, 100], [0,10], [20, 50], [1,10]]
+    labels = ['\\lambda_{peak}', '\\beta', 'm_{min}', '\\delta_{min}', 'm_{max}', '\\delta_{max}', '\\mu_m', '\\sigma_m']
+    label_selected_model = 14
+    true_vals = [0.1,2.63,4.59,4.82,86.22,10,33.07,5.69]
+    model = pl_peak_smoothed
     model_label = 'PowerLaw\ +\ Peak'
 
 if model == 'multi_peak':
