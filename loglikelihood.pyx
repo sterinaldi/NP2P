@@ -5,7 +5,7 @@
 cimport cython
 from cpnest.parameter cimport LivePoint
 from libc.math cimport log, exp, HUGE_VAL, exp, sqrt, M_PI, fabs
-from scipy.special.cython_special cimport gammaln, erf, gamma
+from scipy.special.cython_special cimport gammaln, erf, gamma, xlogy
 cimport numpy as np
 import numpy as np
 from numpy import random
@@ -109,6 +109,9 @@ cdef double _normal_d(double x, double x0, double s):
 
 cdef double _smoothing(double x, double mmin, double d):
     return 1/(exp(d/(x - mmin) + d/(x - mmin - d) ) + 1)
+
+cdef double _smoothing_right(double x, double mmax, double d):
+    return 1/(exp(d/(mmax - x) + d/(mmax - x - d)) + 1)
 
 ########################
 # Population models from O3a Pop paper
@@ -231,6 +234,39 @@ cdef np.ndarray[double,mode="c",ndim=1] _tapered_pl(np.ndarray[double,mode="c",n
 
 def tapered_pl(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax):
     return _tapered_pl(x, b, mmin, mmax, lmin, lmax)
+
+cdef np.ndarray[double,mode="c",ndim=1] _pl_peak_smoothed(np.ndarray[double,mode="c",ndim=1] x, double l, double b, double mmin, double d_min, double mmax, double d_max, double mu, double s):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    cdef double S = 1.
+    for i in range(n):
+        S = 1.
+        if mmin < x[i] < mmax:
+            if x[i] < mmin + d_min:
+                S = _smoothing(x[i], mmin, d_min)
+            if x[i] > mmax - d_max:
+                S = _smoothing(mmax, x[i], d_max)
+            res_view[i] = ((1-l)*_truncated_d(x[i], b, mmin, mmax) + l*_normal_d(x[i], mu, s))*S
+    return res
+
+def pl_peak_smoothed(np.ndarray[double,mode="c",ndim=1] x, double l, double b, double mmin, double d_min, double mmax, double d_max, double mu, double s):
+    return _pl_peak_smoothed(x, l, b, mmin, d_min, mmax, d_max, mu, s)
+    
+cdef np.ndarray[double,mode="c",ndim=1] _chi2(np.ndarray[double,mode="c",ndim=1] x, double df):
+    cdef unsigned int i
+    cdef unsigned int n = x.shape[0]
+    cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
+    cdef double[:] res_view = res
+    
+    for i in range(n):
+        res_view[i] = xlogy(df/2.-1, x[i]) - x[i]/2. - gammaln(df/2.) - (np.log(2.)*df)/2.
+    return res
+
+def chi2(np.ndarray[double,mode="c",ndim=1] x, double df):
+    return _chi2(x, df)
+    
 ########################
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
@@ -273,6 +309,8 @@ def cython_log_likelihood(LivePoint LP,
         m = _tapered_plpeak(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'], LP['mu'], LP['s'], LP['w'])*dx
     elif model == 13:
         m = _tapered_pl(x, LP['b'], LP['mmin'], LP['mmax'], LP['lmin'], LP['lmax'])*dx
+    elif model == 14:
+        m = _pl_peak_smoothed(x, LP['l'], LP['b'], LP['mmin'], LP['d_min'], LP['mmax'], LP['d_max'], LP['mu'], LP['s'])*dx
     else:
         print('model not supported, screw you!')
         return -np.inf
