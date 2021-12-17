@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from ParEst import DirichletProcess
+from parest.ParEst import DirichletProcess
 import json
 import cpnest
 import corner
@@ -8,7 +8,7 @@ import os
 from scipy.interpolate import interp1d
 from scipy.special import logsumexp
 from scipy.stats import dirichlet
-from loglikelihood import chi2
+from parest.loglikelihood import chi2
 
 # OPTIONS
 #------------------------
@@ -43,8 +43,8 @@ rec = np.genfromtxt(rec_file, names = True)
 ss = np.genfromtxt(samps_file)
 
 # Boundaries and number of bins
-x_min = 3#np.min(ss)
-x_max = 15#np.max(ss)
+x_min = np.min(ss)
+x_max = np.max(ss)
 
 # Load data
 openfile = open(draws_file, 'r')

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from ParEst import DirichletProcess
+from parest.ParEst import DirichletProcess
 import json
 import cpnest
 import corner
@@ -87,8 +87,8 @@ rec = np.genfromtxt(rec_file, names = True)
 ss = np.genfromtxt(samps_file)
 
 # Boundaries and number of bins
-x_min = 30#np.min(ss)
-x_max = 50#np.max(ss)
+x_min = np.min(ss)
+x_max = np.max(ss)
 
 # Load data
 openfile = open(draws_file, 'r')

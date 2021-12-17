@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from ParEst import DirichletProcess
+from parest.ParEst import DirichletProcess
 import json
 import pickle
 import cpnest
@@ -8,14 +8,14 @@ import corner
 import os
 from scipy.interpolate import interp1d
 from scipy.special import logsumexp
-from loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak, pl_peak_smoothed
+from parest.loglikelihood import truncated, broken_pl, pl_peak, multi_peak, broken_pl_peak, tapered_plpeak
 
 # OPTIONS
 #------------------------
 # Select dataset
 dataset = 'O3a' # 'O3', 'O3a', 'hdp'
 # Select a model:
-model = 'pl_peak' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak'
+model = 'tapered_plpeak' # 'truncated', 'broken_pl', 'pl_peak', 'multi_peak', 'broken_pl_peak', 'tapered_plpeak'
 # Postprocessing
 postprocessing = False
 # Data folder
@@ -133,6 +133,15 @@ if model == 'broken_pl_peak':
     true_vals = None
     model = broken_pl_peak
     model_label = 'Broken\ PowerLaw\ +\ Peak'
+
+if model == 'tapered_plpeak':
+    names = ['b', 'mmin', 'mmax', 'lmin', 'lmax', 'mu', 's', 'w']
+    bounds = [[0,5], [5,40], [50,120],[1,30], [1,30], [40,70], [1,10], [0,1]]
+    labels = ['\\beta', 'm_{min}', 'm_{max}','\\lambda_{min}', '\\lambda_{max}', '\\mu', '\\sigma', 'w']
+    label_selected_model = 12 # Tapered PowerLaw
+    true_vals = None
+    model = tapered_plpeak
+    model_label = 'Tapered\ PowerLaw\ +\ Peak'
 
 PE = DirichletProcess(
     label_selected_model,
