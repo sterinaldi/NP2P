@@ -6,7 +6,8 @@ import cpnest
 import corner
 import os
 from scipy.interpolate import interp1d
-from scipy.special import logsumexp
+from scipy.special import logsumexp, gammaln
+from scipy.stats import dirichlet
 from loglikelihood import normal, log_likelihood
 
 # OPTIONS
@@ -58,14 +59,16 @@ for d in samps[1:]:
     samples.append(d[np.where([x_min < mi < x_max for mi in m])] + logdx)
     
 #samples = np.array([rec['50'][np.where([x_min < mi < x_max for mi in m])]+logdx])
-samples = np.array([np.log(normal(x,40,5))])
+#samples = np.array([np.log(normal(x,40,5))])
 samples = np.array([s - logsumexp(s) for s in samples])
+
+logP = np.mean(samples, axis = 0)
 
 lenMu    = 1000
 lenSigma = 1000
 
-mu = np.linspace(20,60, lenMu)
-sigma = np.linspace(1,20,lenSigma)
+mu = np.linspace(39,41, lenMu)
+sigma = np.linspace(4.8,5.2,lenSigma)
 dm = mu[1] - mu[0]
 ds = sigma[1] - sigma[0]
 M, S = np.meshgrid(mu,sigma)
@@ -75,7 +78,7 @@ print('{0} bins between {1:.1f} and {2:.1f}, {3} draws. dmu = {4}, ds = {5}'.for
 
 
 
-concentration = 1.1
+concentration = 1e5
 
 likelihood = np.zeros(shape = (len(mu), len(sigma)))
 
@@ -83,7 +86,9 @@ for i in range(lenMu):
     for j in range(lenSigma):
         print('\r{0}/{1}'.format(i*lenSigma+j+1, lenMu*lenSigma), end = '')
         model = normal(x, mu[i], sigma[j])*dx
-        likelihood[i,j] = log_likelihood(model, samples, concentration)
+        model = concentration*model#/np.sum(model)
+        lnB = gammaln(np.sum(model)) - np.sum(gammaln(model))
+        likelihood[i,j] = lnB + np.sum((model-1)*logP) #log_likelihood(model, samples, concentration)
 
 i_mu, j_sigma = np.where([li == likelihood.max() for li in likelihood])
 
@@ -105,7 +110,7 @@ plt.savefig(out_folder + '/plot_logL.pdf', bbox_inches = 'tight')
 
 plt.figure()
 for s in samples:
-    plt.plot(x, np.exp(s), lw = 0.1)
+    plt.plot(x, np.exp(s)/np.sum(np.exp(s)), lw = 0.1)
 #plt.plot(x, normal(x, 40, 5)*dx, lw = 0.6, color = 'r')
 plt.plot(x, post, lw = 0.6, color = 'g')
     
