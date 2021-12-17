@@ -10,24 +10,7 @@ cimport numpy as np
 import numpy as np
 from numpy cimport ndarray
 
-#FIXME: add new models to the list
-models = {
-    0:  normal,
-    1:  uniform,
-    2:  exponential,
-    3:  cauchy,
-    4:  generalized_normal,
-    5:  power_law,
-    6:  bimodal,
-    7:  truncated,
-    8:  pl_peak,
-    9: broken_pl,
-    10: multi_peak,
-    11: tapered_plpeak,
-    12: tapered_pl,
-    13: pl_peak_smoothed,
-    14: chi2
-}
+#FIXME: add new models to the list (see bottom)
 
 
 ##############################
@@ -287,3 +270,21 @@ cdef double _smoothing(double x, double mmin, double d):
     return 1/(exp(d/(x - mmin) + d/(x - mmin - d) ) + 1)
 
 ########################
+
+models = {
+    0:  normal,
+    1:  uniform,
+    2:  exponential,
+    3:  cauchy,
+    4:  generalized_normal,
+    5:  power_law,
+    6:  bimodal,
+    7:  truncated,
+    8:  pl_peak,
+    9:  broken_pl,
+    10: multi_peak,
+    11: tapered_plpeak,
+    12: tapered_pl,
+    13: pl_peak_smoothed,
+    14: chi2
+}
