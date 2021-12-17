@@ -1,7 +1,7 @@
 import cpnest.model
 import numpy as np
 
-from loglikelihood import cython_log_likelihood, normal, tapered_pl
+from loglikelihood import log_likelihood
 from scipy.special import logsumexp
 from numba import jit
 
@@ -55,4 +55,4 @@ class DirichletProcess(cpnest.model.Model):
         return logP
     
     def log_likelihood(self, x):
-        return cython_log_likelihood(x, self.x, self.draws, self.model)
+        return log_likelihood(x, self.x, self.draws, self.model)
