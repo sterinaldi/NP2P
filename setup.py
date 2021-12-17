@@ -20,19 +20,20 @@ with open("requirements.txt") as requires_file:
     requirements = requires_file.read().split("\n")
 
 ext_modules=[
-             Extension('parest/loglikelihood',
+             Extension('parest.loglikelihood',
                        sources=[os.path.join("parest", "loglikelihood.pyx")],
                        libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['parest', numpy.get_include()]
                        ),
-             Extension('parest/models',
+             Extension('parest.models',
                        sources=[os.path.join("parest", "models.pyx")],
                        libraries=["m"], # Unix-like specific
                        extra_compile_args=["-O3","-ffast-math"],
                        include_dirs=['parest', numpy.get_include()]
                        ),
              ]
+             
 ext_modules = cythonize(ext_modules)
 
 setup(
