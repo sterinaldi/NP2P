@@ -16,7 +16,7 @@ folder = '/Users/stefanorinaldi/Documents/parametric/gaussian_test/' # CHANGEME
 # Concentration parameter
 max_alpha = 10000
 # Select a model:
-model = 'normal' # 'normal', 'uniform', 'exponential', 'cauchy', 'gen_normal'
+model = 'uniform' # 'normal', 'uniform', 'exponential', 'cauchy', 'gen_normal'
 # Postprocessing
 postprocessing = False
 #------------------------
@@ -45,7 +45,7 @@ if model == 'exponential':
     nargs = len(names)
     bounds = [[20,60], [1,10]]
     labels = ['x_0', '\\lambda']
-    label_selected_model = 4 # Exponential
+    label_selected_model = 2 # Exponential
     true_vals = None
     model = exponential
     model_label = 'Exponential'
@@ -55,7 +55,7 @@ if model == 'uniform':
     nargs = len(names)
     bounds = [[10, 30], [50,70]]
     labels = ['x_{min}', 'x_{max}']
-    label_selected_model = 3 # Uniform
+    label_selected_model = 1 # Uniform
     true_vals = None
     model = uniform
     model_label = 'Uniform'
@@ -65,7 +65,7 @@ if model == 'cauchy':
     nargs = len(names)
     bounds = [[20, 60], [1,10]]
     labels = ['x_0', '\\gamma']
-    label_selected_model = 5 # Cauchy
+    label_selected_model = 3 # Cauchy
     true_vals = None
     model = cauchy
     model_label = 'Cauchy'
@@ -75,7 +75,7 @@ if model == 'gen_normal':
     nargs = len(names)
     bounds = [[20, 60], [1,10], [1,4]]
     labels = ['\\mu', '\\sigma', '\\beta']
-    label_selected_model = 6 # Generalized Normal
+    label_selected_model = 4 # Generalized Normal
     true_vals = None
     model = generalized_normal
     model_label = 'Generalized\ Normal'
@@ -125,7 +125,7 @@ PE = DirichletProcess(
     samples,
     x = x,
     max_a = max_alpha,
-    out_folder = out_folder
+    out_folder = out_folder,
     )
     
 if not postprocessing:
