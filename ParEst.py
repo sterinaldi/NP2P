@@ -9,7 +9,6 @@ class DirichletProcess(cpnest.model.Model):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
-        self.suffstats  = np.mean(samples, axis = 0)
         self.N          = len(samples)
         self.labels     = pars
         self.names      = pars + ['a']
@@ -30,4 +29,4 @@ class DirichletProcess(cpnest.model.Model):
         return logP
     
     def log_likelihood(self, x):
-        return cython_log_likelihood(x, self.x, self.suffstats, self.model)
+        return cython_log_likelihood(x, self.x, self.samples, self.model)
