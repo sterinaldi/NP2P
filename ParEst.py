@@ -27,10 +27,7 @@ class DirichletProcess(cpnest.model.Model):
             self.n_resamps = len(samples)
         else:
             self.n_resamps = n_resamps
-#
-#        draws = np.empty(self.n_resamps)
-#
-#        draws = np.array([np.array([np.random.choice(vi)[0] for vi in samples.T]) for _ in range(self.n_resamps)])
+        
         self.draws = self.generate_resamps()
 
     def generate_resamps(self):
