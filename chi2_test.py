@@ -21,7 +21,7 @@ folder = '/Users/stefanorinaldi/Documents/parametric/chi2/' # CHANGEME
 max_alpha = 10000
 # Model parameters
 names = ['df']
-bounds = [[1,30]]
+bounds = [[0,30]]
 labels = ['df']
 label_selected_model = 15 # Tapered PowerLaw
 true_vals = [8]
@@ -43,8 +43,8 @@ rec = np.genfromtxt(rec_file, names = True)
 ss = np.genfromtxt(samps_file)
 
 # Boundaries and number of bins
-x_min = np.min(ss)
-x_max = np.max(ss)
+x_min = 3#np.min(ss)
+x_max = 15#np.max(ss)
 
 # Load data
 openfile = open(draws_file, 'r')
