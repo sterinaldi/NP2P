@@ -13,7 +13,7 @@ def unif(*args):
 
 class DirichletProcess(cpnest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, nthreads = 4, out_folder = './', n_resamps = None):
+    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
