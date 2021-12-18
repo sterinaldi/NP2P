@@ -2,6 +2,7 @@ import cpnest.model
 import numpy as np
 
 from parest.loglikelihood import log_likelihood
+from parest.models import model_names
 from scipy.special import logsumexp
 from numba import jit
 
@@ -16,19 +17,27 @@ class DirichletProcess(cpnest.model.Model):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
-        self.n_pars          = len(pars)
+        self.n_pars     = len(pars)
         self.names      = pars + ['a']
         self.bounds     = bounds + [[0, max_a*len(x)]]
         self.prior_pars = prior_pars
         self.model      = model
         self.x          = x
-        
+        self.check_model()
         if n_resamps is None:
             self.n_resamps = len(samples)
         else:
             self.n_resamps = n_resamps
-        
         self.draws = self.generate_resamps()
+    
+    def check_model(self):
+        try:
+            print('Selected model: ' + model_names[self.model])
+        except:
+            print('The model you selected is not implemented (yet). You may want to try one of the following:')
+            for key, name in zip(model_names.keys(), model_names.values()):
+                print('{0}: {1}'.format(key, name))
+            exit()
 
     def generate_resamps(self):
     
