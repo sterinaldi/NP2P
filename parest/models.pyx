@@ -286,5 +286,23 @@ models = {
     11: tapered_plpeak,
     12: tapered_pl,
     13: pl_peak_smoothed,
-    14: chi2
+    14: chi2,
+}
+
+model_names = {
+    0:  'Gaussian',
+    1:  'Uniform',
+    2:  'Exponential',
+    3:  'Cauchy',
+    4:  'Generalized Normal',
+    5:  'Power law',
+    6:  'Bimodal Gaussian',
+    7:  'Truncated Power Law',
+    8:  'Power Law + Peak',
+    9:  'Broken Power Law',
+    10: 'Multi Peak',
+    11: 'Tapered Power Law + Peak',
+    12: 'Tapered Power Law',
+    13: 'Smoothed Power Law + Peak',
+    14: 'Chi^2',
 }
