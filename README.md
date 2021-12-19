@@ -15,10 +15,12 @@ model = 1                           # Model number
 pars  = ['par1', 'par2']            # Parameters of the model
 bounds = [[0,1], [0,1]]             # Parameter bounds
 
-sampler = DP(model = model, 
-             pars  = pars, 
-             bounds= bounds,
-             samples = samples)
+sampler = DP(model   = model, 
+             pars    = pars, 
+             bounds  = bounds,
+             samples = samples,
+             x       = x,
+             )
 
 work = cpnest.CPNest(DP)
 work.run()
