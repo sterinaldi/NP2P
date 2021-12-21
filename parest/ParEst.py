@@ -13,7 +13,7 @@ def unif(*args):
 
 class DirichletProcess(cpnest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None):
+    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
@@ -23,12 +23,24 @@ class DirichletProcess(cpnest.model.Model):
         self.prior_pars = prior_pars
         self.model      = model
         self.x          = x
+        self.n_bins     = len(x)
+        
         self.check_model()
+        
         if n_resamps is None:
             self.n_resamps = len(samples)
         else:
             self.n_resamps = n_resamps
+            
         self.draws = self.generate_resamps()
+        
+        if selection_function is None:
+            self.selection_function = np.ones(len(x))
+        else:
+            if not len(selection_function) == len(x):
+                print('Selection function does not have the same lenght as x')
+                exit()
+            self.selection_function = selection_function
     
     def check_model(self):
         try:
@@ -64,4 +76,4 @@ class DirichletProcess(cpnest.model.Model):
         return logP
     
     def log_likelihood(self, x):
-        return log_likelihood(x, self.x, self.draws, self.model, self.n_pars)
+        return log_likelihood(x, self.x, self.draws, self.selection_function, self.model, self.n_pars, self.n_bins, self.n_resamps)
