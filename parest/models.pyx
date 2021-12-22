@@ -244,9 +244,10 @@ cdef np.ndarray[double,mode="c",ndim=1] _chi2(np.ndarray[double,mode="c",ndim=1]
     cdef unsigned int n = x.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
     cdef double[:] res_view = res
+    cdef double df_int = np.round(df)
     
     for i in range(n):
-        res_view[i] = exp(xlogy(df/2.-1, x[i]) - x[i]/2. - gammaln(df/2.) - (np.log(2.)*df)/2.)
+        res_view[i] = exp(xlogy(df_int/2.-1, x[i]) - x[i]/2. - gammaln(df_int/2.) - (np.log(2.)*df_int)/2.)
     return res
 
 def chi2(np.ndarray[double,mode="c",ndim=1] x, double df):
