@@ -8,6 +8,7 @@ from libc.math cimport log, exp, HUGE_VAL, fabs
 from scipy.special.cython_special cimport gammaln
 cimport numpy as np
 import numpy as np
+# FIXME: import cython dictionary
 from parest.models import models
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
@@ -38,6 +39,7 @@ cdef double _log_likelihood(LivePoint LP,
     cdef double norm_model = 0.
     cdef double bin_val = 0.
     
+    # FIXME: cython dictionary
     cdef np.ndarray[double,mode="c",ndim=1] m = models[model](x, *LP.values[:n_pars])
     cdef np.ndarray[double,mode="c",ndim=1] filtered_m = np.zeros(Nbins,dtype=np.double)
     cdef double[:] filtered_m_view = filtered_m
