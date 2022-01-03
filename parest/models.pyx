@@ -208,13 +208,9 @@ cdef np.ndarray[double,mode="c",ndim=1] _tapered_pl(np.ndarray[double,mode="c",n
     cdef unsigned int n = x.shape[0]
     cdef np.ndarray[double,mode="c",ndim=1] res = np.zeros(n,dtype=np.double)
     cdef double[:] res_view = res
-    cdef double app, N = 0.
+    cdef double app, N = (b-1)/(mmin**(1-b)-mmax**(1-b))
     for i in range(n):
-        app = x[i]**(-b)*(1+erf((x[i]-mmin)/(lmin)))*(1+erf((mmax-x[i])/(lmax)))/4
-        res_view[i] = app
-        N += app
-    for i in range(n):
-        res_view[i] = res_view[i]/N
+        res_view[i] = N*x[i]**(-b)*(1+erf((x[i]-mmin)/(lmin)))*(1+erf((mmax-x[i])/(lmax)))/4
     return res
 
 def tapered_pl(np.ndarray[double,mode="c",ndim=1] x, double b, double mmin, double mmax, double lmin, double lmax):
