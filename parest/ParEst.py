@@ -13,7 +13,7 @@ def unif(*args):
 
 class DirichletProcess(cpnest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None):
+    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None, shuffle = True):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
@@ -31,8 +31,11 @@ class DirichletProcess(cpnest.model.Model):
             self.n_resamps = len(samples)
         else:
             self.n_resamps = n_resamps
-            
-        self.draws = self.generate_resamps()
+        
+        if shuffle:
+            self.draws = self.shuffle_samples()
+        else:
+            self.draws = self.generate_resamps()
         
         if selection_function is None:
             self.selection_function = np.ones(len(x))
@@ -63,7 +66,17 @@ class DirichletProcess(cpnest.model.Model):
             draws.append(draw)
 
         return np.atleast_2d(draws)
-
+    
+    def shuffle_samples(self):
+    
+        draws = np.copy(self.samples)
+        bin   = [np.random.shuffle(d) for d in draws.T]
+        
+        for i in range(len(draws)):
+            draws[i] = draws[i] - logsumexp(draws[i])
+        
+        return draws
+    
     def log_prior(self, x):
     
         logP = super(DirichletProcess,self).log_prior(x)
