@@ -1,5 +1,6 @@
 import cpnest.model
 import numpy as np
+import matplotlib.pyplot as plt
 
 from parest.loglikelihood import log_likelihood
 from parest.models import model_names
@@ -13,7 +14,7 @@ def unif(*args):
 
 class DirichletProcess(cpnest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None, shuffle = True):
+    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None, shuffle = True, use_samples = False):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
@@ -32,10 +33,13 @@ class DirichletProcess(cpnest.model.Model):
         else:
             self.n_resamps = n_resamps
         
-        if shuffle:
-            self.draws = self.shuffle_samples()
+        if use_samples:
+            self.draws = np.array([s - logsumexp(s) for s in samples])
         else:
-            self.draws = self.generate_resamps()
+            if shuffle:
+                self.draws = self.shuffle_samples()
+            else:
+                self.draws = self.generate_resamps()
         
         if selection_function is None:
             self.selection_function = np.ones(len(x))
