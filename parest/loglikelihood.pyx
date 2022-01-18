@@ -49,10 +49,10 @@ cdef double _log_likelihood(LivePoint LP,
         filtered_m_view[i] = bin_val
         norm_model += bin_val
     
-    cdef double logL = compute_log_likelihood(filtered_m, draws, concentration, norm_model, Nbins, Ndraws)
+    cdef double logL = _compute_log_likelihood(filtered_m, draws, concentration, norm_model, Nbins, Ndraws)
     return logL
     
-cdef double compute_log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
+cdef double _compute_log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
                                    np.ndarray[double,mode="c",ndim=2] draws,
                                    double concentration,
                                    double norm_model,
