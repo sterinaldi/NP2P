@@ -3,13 +3,14 @@
 # cython: linetrace=False
 # cython: language_level=3, cdivision=True, boundscheck=False, wraparound=False, binding=True, embedsignature=True
 cimport cython
-from cpnest.parameter cimport LivePoint
+from raynest.parameter cimport LivePoint
 from libc.math cimport log, exp, HUGE_VAL, fabs
 from scipy.special.cython_special cimport gammaln
 cimport numpy as np
 import numpy as np
 # FIXME: import cython dictionary
 from parest.models import models
+from scipy.stats import dirichlet
 
 cdef inline double log_add(double x, double y) nogil: return x+log(1.0+exp(y-x)) if x >= y else y+log(1.0+exp(x-y))
 
@@ -20,9 +21,10 @@ def log_likelihood(LivePoint LP,
                    unsigned int model,
                    unsigned int n_pars,
                    unsigned int Nbins,
+                   unsigned int Npoints,
                    unsigned int Ndraws):
     
-    return _log_likelihood(LP, x, draws, selection_function, model, n_pars, Nbins, Ndraws)
+    return _log_likelihood(LP, x, draws, selection_function, model, n_pars, Nbins, Npoints, Ndraws)
 
 cdef double _log_likelihood(LivePoint LP,
                    np.ndarray[double,mode="c",ndim=1] x,
@@ -31,6 +33,7 @@ cdef double _log_likelihood(LivePoint LP,
                    unsigned int model,
                    unsigned int n_pars,
                    unsigned int Nbins,
+                   unsigned int Npoints,
                    unsigned int Ndraws):
 
     cdef int i
@@ -49,36 +52,42 @@ cdef double _log_likelihood(LivePoint LP,
         filtered_m_view[i] = bin_val
         norm_model += bin_val
     
-    cdef double logL = _compute_log_likelihood(filtered_m, draws, concentration, norm_model, Nbins, Ndraws)
+    cdef double logL = _compute_log_likelihood(filtered_m, draws, concentration, norm_model, Nbins, Ndraws, log(dx))
     return logL
     
 cdef double _compute_log_likelihood(np.ndarray[double,mode="c",ndim=1] m,
-                                   np.ndarray[double,mode="c",ndim=2] draws,
-                                   double concentration,
-                                   double norm_model,
-                                   unsigned int Nbins,
-                                   unsigned int Ndraws):
+                                    np.ndarray[double,mode="c",ndim=2] draws,
+                                    double concentration,
+                                    double norm_model,
+                                    unsigned int Nbins,
+                                    unsigned int Ndraws,
+                                    double logdx):
     """
     L = \frac{1}{N}\sum_i \Gamma(a)\prod_j \frac{p_{i,j}^{a*m_j-1)}{\Gamma(a*m_j)}
     """
     cdef np.ndarray[double,mode="c",ndim=1] a = np.zeros(Nbins, dtype=np.double)
+    cdef np.ndarray[double,mode="c",ndim=1] median = np.zeros(Nbins, dtype=np.double)
     cdef unsigned int i,j
     cdef double l
     cdef double logL = -HUGE_VAL
     cdef double g = 0.0
-    
+    cdef double dx = exp(logdx)
+
     # Base distribution and normalization constant
     for i in range(Nbins):
         a[i] = concentration*m[i]/norm_model
         g += gammaln(a[i])
-    cdef double lognorm = gammaln(concentration) - g
-    
-    # Monte Carlo integral
-    for j in range(Ndraws):
-        l = 0.0
-        for i in range(Nbins):
-            l += (a[i]-1.0)*draws[j,i]
-        logL = log_add(logL,l)
+    cdef double lognorm = gammaln(np.sum(a)) - g
 
-    return logL + lognorm - log(Ndraws)
+    # Monte Carlo integral
+    median = np.median(np.exp(draws), axis  = 0)
+    logL   = np.sum((a-1.)*(np.log(median) - np.log(np.sum(median))))
+#    for j in range(Ndraws):
+#        l = 0.0
+#        for i in range(Nbins):
+#            l += (a[i]-1.0)*(draws[j,i])
+#        logL = log_add(logL,l)
+#    logL -= log(Ndraws)
+
+    return logL + lognorm
 

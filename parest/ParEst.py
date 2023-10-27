@@ -1,9 +1,9 @@
-import cpnest.model
+import raynest.model
 import numpy as np
 import matplotlib.pyplot as plt
 
 from parest.loglikelihood import log_likelihood
-from parest.models import model_names
+from parest.models import model_names, models
 from scipy.special import logsumexp
 from numba import jit
 
@@ -12,19 +12,24 @@ from numba import jit
 def unif(*args):
     return 0
 
-class DirichletProcess(cpnest.model.Model):
+class DirichletProcess(raynest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, prior_pars = unif, max_a = 10000, out_folder = './', n_resamps = None, selection_function = None, shuffle = True, use_samples = False):
+    def __init__(self, model, pars, bounds, samples, x, draws, n_points, prior_pars = unif, max_a = 1e8, out_folder = './', n_resamps = None, selection_function = None, tol = 1e-1):
     
         super(DirichletProcess, self).__init__()
         self.samples    = samples
         self.n_pars     = len(pars)
-        self.names      = pars + ['a']
-        self.bounds     = bounds + [[0, max_a*len(x)]]
+        self.names      = pars + ['a', 'N']
+        self.bounds     = bounds + [[0, max_a], [10, len(x)]]
         self.prior_pars = prior_pars
         self.model      = model
         self.x          = x
+        self.log_dx     = np.log(x[1]-x[0])
         self.n_bins     = len(x)
+        self.n_points   = n_points
+        self.tol        = tol
+        self.draws      = draws
+        self.dict_draws = {}
         
         self.check_model()
         
@@ -33,19 +38,15 @@ class DirichletProcess(cpnest.model.Model):
         else:
             self.n_resamps = n_resamps
         
-        if use_samples:
-            self.draws = np.array([s - logsumexp(s) for s in samples])
-        else:
-            if shuffle:
-                self.draws = self.shuffle_samples()
-            else:
-                self.draws = self.generate_resamps()
+        # Shuffling
+#        self.draws = samples #np.array([np.random.choice(b, len(b), replace = False) for b in samples.T]).T
+#        self.draws = np.array([s - logsumexp(s + self.log_dx) for s in self.draws])
         
         if selection_function is None:
             self.selection_function = np.ones(len(x))
         else:
             if not len(selection_function) == len(x):
-                print('Selection function does not have the same lenght as x')
+                print('Selection function does not have the same length as x')
                 exit()
             self.selection_function = selection_function
     
@@ -58,39 +59,24 @@ class DirichletProcess(cpnest.model.Model):
                 print('{0}: {1}'.format(key, name))
             exit()
 
-    def generate_resamps(self):
-    
-        draws  = []
-        bin_idx = np.arange(len(self.x))
-        
-        for _ in range(self.n_resamps):
-            sample_idx = np.random.randint(0, len(self.samples), size = len(self.x))
-            draw       = np.array([self.samples[si, bi] for (si, bi) in zip(sample_idx, bin_idx)])
-            draw       = draw - logsumexp(draw)
-            draws.append(draw)
-
-        return np.atleast_2d(draws)
-    
-    def shuffle_samples(self):
-    
-        draws = np.copy(self.samples)
-        bin   = [np.random.shuffle(d) for d in draws.T]
-        
-        for i in range(len(draws)):
-            draws[i] = draws[i] - logsumexp(draws[i])
-        
-        return draws
-    
     def log_prior(self, x):
     
         logP = super(DirichletProcess,self).log_prior(x)
         
         if np.isfinite(logP):
-            logP = -(1/x['a'])
-            pars = x.values[:-1]
+            logP = - np.log(x['N'])
+            pars = x.values[:-2]
             logP += self.prior_pars(*pars)
         
         return logP
     
     def log_likelihood(self, x):
-        return log_likelihood(x, self.x, self.draws, self.selection_function, self.model, self.n_pars, self.n_bins, self.n_resamps)
+        N = 100#int(np.sqrt(len(self.samples))) # int(x['N'])
+        vals = np.linspace(self.x.min(), self.x.max(), N)
+        if not N in self.dict_draws.keys():
+            draws = np.array([d.logpdf(vals) - np.log(np.sum(d.pdf(vals))) for d in self.draws])
+#            draws = np.array([d.pdf(vals) for d in self.draws])
+            self.dict_draws[N] = draws
+        else:
+            draws = self.dict_draws[N]
+        return log_likelihood(x, vals, draws, self.selection_function, self.model, self.n_pars, N, self.n_points, self.n_resamps)
