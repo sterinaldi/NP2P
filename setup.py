@@ -38,7 +38,6 @@ ext_modules = cythonize(ext_modules)
 
 setup(
     name = 'parest',
-    use_scm_version=True,
     description = 'Parameter estimation from non-parametric inference',
     author = 'Walter Del Pozzo, Stefano Rinaldi',
     author_email = 'walter.delpozzo@unipi.it, stefano.rinaldi@phd.unipi.it',
@@ -47,7 +46,7 @@ setup(
     packages = ['parest'],
     include_dirs = [numpy.get_include()],
     install_requires=requirements,
-    setup_requires=['numpy', 'cython', 'setuptools_scm'],
+    setup_requires=['numpy', 'cython'],
     entry_points={},
     package_data={"": ['*.c', '*.pyx', '*.pxd']},
     ext_modules=ext_modules,
