@@ -2,9 +2,7 @@ import raynest.model
 import numpy as np
 import matplotlib.pyplot as plt
 
-from parest.loglikelihood import log_likelihood
-from parest.models import model_names, models
-from scipy.special import logsumexp
+from scipy.special import logsumexp, gammaln
 from numba import jit
 
 # Default uniform prior
@@ -14,69 +12,97 @@ def unif(*args):
 
 class DirichletProcess(raynest.model.Model):
 
-    def __init__(self, model, pars, bounds, samples, x, draws, n_points, prior_pars = unif, max_a = 1e8, out_folder = './', n_resamps = None, selection_function = None, tol = 1e-1):
+    def __init__(self, model,
+                       pars,
+                       bounds,
+                       samples,
+                       domain_bounds,
+                       draws,
+                       log_prior = None,
+                       n_bins = None,
+                       n_data = None,
+                       max_a = 1e8,
+                       selection_function = None,
+                       ):
     
         super(DirichletProcess, self).__init__()
-        self.samples    = samples
-        self.n_pars     = len(pars)
-        self.names      = pars + ['a', 'N']
-        self.bounds     = bounds + [[0, max_a], [10, len(x)]]
-        self.prior_pars = prior_pars
-        self.model      = model
-        self.x          = x
-        self.log_dx     = np.log(x[1]-x[0])
-        self.n_bins     = len(x)
-        self.n_points   = n_points
-        self.tol        = tol
-        self.draws      = draws
-        self.dict_draws = {}
-        
-        self.check_model()
-        
-        if n_resamps is None:
-            self.n_resamps = len(samples)
+        self.names         = pars + ['a']
+        self.bounds        = bounds + [[0, max_a]]
+        self.model         = model
+        self.n_pars        = len(pars)
+        self.draws         = draws
+        # Bins
+        if n_bins is not None:
+            self.n_bins       = int(n_bins)
+            self.poisson      = None
+            self.n_pars_total = self.n_pars + 1
+            self.N            = self.n_bins
+        elif n_data is not None:
+            self.n_bins       = None
+            self.exp_n_bins   = int(np.sqrt(n_data))
+            self.poisson      = poisson(self.exp_n_bins)
+            self.n_pars_total = self.n_pars + 2
+            self.N            = self.exp_n_bins
         else:
-            self.n_resamps = n_resamps
+            raise Exception('Please provide either n_data or n_bins')
+        # Dictionaries to store pre-computed values
+        self.dict_draws    = {}
+        self.dict_vals     = {}
+        self.dict_selfunc  = {}
+        # Domain
+        if domain_bounds is not None:
+            self.domain_bounds = np.array(domain_bounds)
+        else:
+            try:
+                # If FIGARO, use its bounds
+                self.domain_bounds = self.draws[0].bounds[0]
+            except AttributeError:
+                raise Exception('Please provide domain bounds')
         
-        # Shuffling
-#        self.draws = samples #np.array([np.random.choice(b, len(b), replace = False) for b in samples.T]).T
-#        self.draws = np.array([s - logsumexp(s + self.log_dx) for s in self.draws])
-        
+        # Selection function
         if selection_function is None:
-            self.selection_function = np.ones(len(x))
+            self.selection_function = lambda x: np.ones(len(x))
         else:
-            if not len(selection_function) == len(x):
-                print('Selection function does not have the same length as x')
-                exit()
+            if not callable(selection_function):
+                raise Exception('selection_function must be callable')
             self.selection_function = selection_function
-    
-    def check_model(self):
-        try:
-            print('Selected model: ' + model_names[self.model])
-        except:
-            print('The model you selected is not implemented (yet). You may want to try one of the following:')
-            for key, name in zip(model_names.keys(), model_names.values()):
-                print('{0}: {1}'.format(key, name))
-            exit()
+        # Prior
+        if log_prior is None:
+            self.log_prior = lambda x: -self.log_V
+        else:
+            if not callable(selection_function):
+                raise Exception('log_prior must be callable')
+            self.log_prior = log_prior
 
     def log_prior(self, x):
-    
         logP = super(DirichletProcess,self).log_prior(x)
-        
         if np.isfinite(logP):
-            logP = - np.log(x['N'])
             pars = x.values[:-2]
-            logP += self.prior_pars(*pars)
-        
+            logP += self.prior_pars(pars)
         return logP
     
     def log_likelihood(self, x):
-        N = 100#int(np.sqrt(len(self.samples))) # int(x['N'])
-        vals = np.linspace(self.x.min(), self.x.max(), N)
-        if not N in self.dict_draws.keys():
-            draws = np.array([d.logpdf(vals) - np.log(np.sum(d.pdf(vals))) for d in self.draws])
-#            draws = np.array([d.pdf(vals) for d in self.draws])
-            self.dict_draws[N] = draws
+        if not self.N in self.dict_draws.keys():
+            vals    = np.linspace(*self.domain_bounds, N)
+            selfunc = self.selection_function(vals)
+            draws   = np.array([d.logpdf(vals) + np.log(vals[1]-vals[0]) for d in self.draws]).T
+            draws   = np.array([np.random.choice(b, size = len(b), replace = True) for b in draws]).T
+            draws   = np.array([d - logsumexp(d) for d in draws])
+            self.dict_draws[N]   = draws
+            self.dict_vals[N]    = vals
+            self.dict_selfunc[N] = selfunc
         else:
-            draws = self.dict_draws[N]
-        return log_likelihood(x, vals, draws, self.selection_function, self.model, self.n_pars, N, self.n_points, self.n_resamps)
+            draws   = self.dict_draws[N]
+            vals    = self.dict_vals[N]
+            selfunc = self.dict_selfunc[N]
+        # Base distribution
+        m  = self.model(vals, *x.values[:self.n_pars])*(vals[1]-vals[0])
+        if not all(m > 0):
+            return -np.inf
+        m /= np.sum(m)
+        a  = x['a']*m
+        # Normalisation constant
+        lognorm = gammaln(np.sum(a)) - np.sum(gammaln(a)) - gammaln(N)
+        # Likelihood
+        logL    = logsumexp([np.sum(np.multiply(a-1., d)) for d in draws]) - np.log(len(draws))
+        return logL + lognorm
