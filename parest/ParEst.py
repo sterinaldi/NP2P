@@ -4,7 +4,7 @@ from scipy.stats import poisson
 from scipy.special import logsumexp
 from emcee import EnsembleSampler
 from emcee.moves import GaussianMove, WalkMove
-from parest._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect, poisson_jit, ones_jit, uniform_jit
+from parest._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect
 
 def evaluate_logP(x, self):
     return self.log_post(x)
@@ -27,9 +27,8 @@ class DirichletProcess:
                        n_bins = None,
                        n_data = None,
                        max_a = 1e5,
-                       out_folder = './',
                        selection_function = None,
-                       burnin = 1000,
+                       burnin = 10000,
                        ):
         self.n_pars     = len(pars)
         self.model      = model
@@ -48,14 +47,19 @@ class DirichletProcess:
             self.poisson      = None
             self.n_pars_total = self.n_pars + 1
             self.N            = self.n_bins
-        elif n_data is not None:
-            self.n_bins       = None
-            self.exp_n_bins   = int(np.sqrt(n_data))
+        else:
+            self.n_bins = None
+            if n_data is not None:
+                self.exp_n_bins = int(np.sqrt(n_data))
+            else:
+                try:
+                    # If FIGARO, use stored number of samples
+                    self.exp_n_bins = int(np.sqrt(self.draws[0].n_pts))
+                except AttributeError:
+                    raise Exception('Please provide either n_data or n_bins')
             self.poisson      = poisson(self.exp_n_bins)
             self.n_pars_total = self.n_pars + 2
             self.N            = self.exp_n_bins
-        else:
-            raise Exception('Please provide either n_data or n_bins')
         # Dictionaries to store pre-computed values
         self.dict_vals    = {}
         self.dict_draws   = {}
@@ -69,7 +73,7 @@ class DirichletProcess:
         self.logP      = np.empty((0))
         # Functions
         if selection_function is None:
-            self.selection_function = ones_jit
+            self.selection_function = lambda x: np.ones(len(x))
         else:
             if not callable(selection_function):
                 raise Exception('selection_function must be callable')
@@ -85,7 +89,7 @@ class DirichletProcess:
                                        ndim = len(self.names),
                                        log_prob_fn = evaluate_logP,
                                        args = ([self]),
-                                       moves = WalkMove(), #GaussianMove(np.array(list(np.diff(bounds).flatten()/20) + [30.]))
+#                                       moves = GaussianMove(np.array(list(np.diff(bounds).flatten()/20) + [30.]))
                                        )
         print('Initialising MCMC')
         self.sampler.run_mcmc(initial_state = np.random.uniform(*self.bounds.T, size = (2*(self.n_pars+1),self.n_pars+1)),
@@ -135,9 +139,9 @@ class DirichletProcess:
         m /= np.sum(m)
         a  = x[-1]*m
         # Normalisation constant
-        lognorm = gammaln_jit(np.sum(a)) - np.sum(gammaln_jit_vect(a)) - gammaln_jit(N)
+        lognorm = gammaln_jit(np.sum(a)) - np.sum(gammaln_jit_vect(a))
         # Likelihood
-        logL    = logsumexp([np.sum(np.multiply(a-1., d)) for d in draws]) - np.log(len(draws))
+        logL    = logsumexp_jit(np.sum(np.multiply(a-1., draws), axis = 1)) - np.log(len(draws))
         return logL + lognorm
     
     def initialise(self):
