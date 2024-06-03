@@ -19,35 +19,35 @@ class build_ext(_build_ext):
 with open("requirements.txt") as requires_file:
     requirements = requires_file.read().split("\n")
 
-ext_modules=[
-             Extension('parest.loglikelihood',
-                       sources=[os.path.join("parest", "loglikelihood.pyx")],
-                       libraries=["m"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['parest', numpy.get_include()]
-                       ),
-             Extension('parest.models',
-                       sources=[os.path.join("parest", "models.pyx")],
-                       libraries=["m"], # Unix-like specific
-                       extra_compile_args=["-O3","-ffast-math"],
-                       include_dirs=['parest', numpy.get_include()]
-                       ),
-             ]
-             
-ext_modules = cythonize(ext_modules)
+#ext_modules=[
+#             Extension('parest.loglikelihood',
+#                       sources=[os.path.join("parest", "loglikelihood.pyx")],
+#                       libraries=["m"], # Unix-like specific
+#                       extra_compile_args=["-O3","-ffast-math"],
+#                       include_dirs=['parest', numpy.get_include()]
+#                       ),
+#             Extension('parest.models',
+#                       sources=[os.path.join("parest", "models.pyx")],
+#                       libraries=["m"], # Unix-like specific
+#                       extra_compile_args=["-O3","-ffast-math"],
+#                       include_dirs=['parest', numpy.get_include()]
+#                       ),
+#             ]
+#             
+#ext_modules = cythonize(ext_modules)
 
 setup(
     name = 'parest',
     description = 'Parameter estimation from non-parametric inference',
-    author = 'Walter Del Pozzo, Stefano Rinaldi',
-    author_email = 'walter.delpozzo@unipi.it, stefano.rinaldi@phd.unipi.it',
+    author = 'Stefano Rinaldi, Walter Del Pozzo',
+    author_email = 'stefano.rinaldi@uni-heidelberg.de, walter.delpozzo@unipi.it',
     url = 'https://github.com/sterinaldi/parametric',
     python_requires = '>=3.7',
     packages = ['parest'],
     include_dirs = [numpy.get_include()],
     install_requires=requirements,
-    setup_requires=['numpy', 'cython'],
+    setup_requires=['numpy'],
     entry_points={},
-    package_data={"": ['*.c', '*.pyx', '*.pxd']},
-    ext_modules=ext_modules,
+#    package_data={"": ['*.c', '*.pyx', '*.pxd']},
+#    ext_modules=ext_modules,
     )
