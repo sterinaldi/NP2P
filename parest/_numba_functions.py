@@ -28,22 +28,3 @@ def gammaln_jit_vect(x):
 def logsumexp_jit(a):
     a_max = np.max(a)
     return np.log(np.sum(np.exp(a - a_max))) + a_max
-
-@njit
-def log_add(x, y):
-    if x >= y:
-        return x+log1p_jit(np.exp(y-x))
-    else:
-        return y+log1p_jit(np.exp(x-y))
-
-@njit
-def poisson_jit(n, l):
-    return n*np.log(l) - gammaln_jit(n+1.) - l
-    
-@njit
-def ones_jit(x):
-    return np.ones(len(x), dtype = np.float64)
-
-@njit
-def uniform_jit(x):
-    return 0.
