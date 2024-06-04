@@ -1,39 +1,4 @@
 import numpy as np
-<<<<<<< HEAD
-
-from scipy.stats import poisson, dirichlet
-from scipy.special import logsumexp, gammaln
-from parest._numba_functions import gammaln_jit, gammaln_jit_vect, logsumexp_jit
-
-class DirichletProcess(raynest.model.Model):
-
-    def __init__(self, model,
-                       pars,
-                       bounds,
-                       domain_bounds,
-                       draws,
-                       log_prior = None,
-                       n_bins = None,
-                       n_data = None,
-                       max_a = 1e5,
-                       selection_function = None,
-                       ):
-    
-        super(DirichletProcess, self).__init__()
-        self.names  = pars + ['a']
-        self.bounds = bounds + [[0, 1e5]]
-        self.log_V  = np.log(np.sum(np.diff(self.bounds)))
-        self.model  = model
-        self.n_pars = len(pars)
-        self.draws  = draws
-        # Bins
-        if n_bins is not None:
-            self.n_bins       = int(n_bins)
-            self.poisson      = None
-            self.n_pars_total = self.n_pars + 1
-            self.N            = self.n_bins
-        else:
-=======
 from tqdm import tqdm
 from scipy.stats import poisson, multivariate_normal as mn
 from scipy.special import logsumexp
@@ -83,7 +48,6 @@ class DirichletProcess:
             self.n_pars_total = self.n_pars + 1
             self.N            = self.n_bins
         else:
->>>>>>> mcmc
             self.n_bins = None
             if n_data is not None:
                 self.exp_n_bins = int(np.sqrt(n_data))
@@ -97,7 +61,6 @@ class DirichletProcess:
             self.n_pars_total = self.n_pars + 2
             self.N            = self.exp_n_bins
         # Dictionaries to store pre-computed values
-<<<<<<< HEAD
         self.dict_draws    = {}
         self.dict_vals     = {}
         self.dict_selfunc  = {}
@@ -112,63 +75,12 @@ class DirichletProcess:
                 raise Exception('Please provide domain bounds')
         
         # Selection function
-=======
-        self.dict_vals    = {}
-        self.dict_draws   = {}
-        self.dict_selfunc = {}
-        # Sampler settings
-        self.names     = pars + ['log_a']
-        self.bounds    = np.array(bounds + [[0, max_a]])
-        self.log_V     = np.log(np.sum(np.diff(self.bounds)))
-        self.burnin    = int(burnin)
-        self.samples   = np.empty((0, self.n_pars_total))
-        self.logP      = np.empty((0))
-        # Functions
->>>>>>> mcmc
         if selection_function is None:
             self.selection_function = lambda x: np.ones(len(x))
         else:
             if not callable(selection_function):
                 raise Exception('selection_function must be callable')
             self.selection_function = selection_function
-<<<<<<< HEAD
-        # Prior
-        if log_prior is None:
-            self.log_prior_pars = lambda y: -self.log_V
-        else:
-            if not callable(selection_function):
-                raise Exception('log_prior must be callable')
-            self.log_prior_pars = log_prior
-
-    def log_prior(self, x):
-        logP = super(DirichletProcess,self).log_prior(x)
-        if np.isfinite(logP):
-            pars  = x.values[:self.n_pars]
-            return self.log_prior_pars(pars) - x['a']
-        return logP
-    
-    def log_likelihood(self, x):
-        if not self.N in self.dict_draws.keys():
-            vals    = np.linspace(*self.domain_bounds, self.N)
-            selfunc = self.selection_function(vals)
-            draws   = np.array([d.logpdf(vals) + np.log(vals[1]-vals[0]) for d in self.draws]).T
-            draws   = np.array([np.random.choice(b, size = len(b), replace = True) for b in draws]).T
-            draws   = np.array([d - logsumexp(d) for d in draws])
-            self.dict_draws[self.N]   = draws
-            self.dict_vals[self.N]    = vals
-            self.dict_selfunc[self.N] = selfunc
-        else:
-            draws   = self.dict_draws[self.N]
-            vals    = self.dict_vals[self.N]
-            selfunc = self.dict_selfunc[self.N]
-        # Base distribution
-        pars = x.values[:self.n_pars]
-        m    = self.model(vals, *pars)*(vals[1]-vals[0])
-        if not all(m > 0):
-            return -np.inf
-        m /= np.sum(m)
-        a  = x['a']*m
-=======
         if log_prior is None:
             self.log_prior = lambda x: -self.log_V
         else:
@@ -230,14 +142,11 @@ class DirichletProcess:
             return -np.inf
         m /= np.sum(m)
         a  = x[-1]*m
->>>>>>> mcmc
         # Normalisation constant
         lognorm = gammaln_jit(np.sum(a)) - np.sum(gammaln_jit_vect(a))
         # Likelihood
         logL    = logsumexp_jit(np.sum(np.multiply(a-1., draws), axis = 1)) - np.log(len(draws))
         return logL + lognorm
-<<<<<<< HEAD
-=======
     
     def initialise(self):
         self.samples      = np.empty((0, self.n_pars_total))
@@ -266,4 +175,3 @@ class DirichletProcess:
             logP[i] += logP_N[i]
         self.samples = np.concatenate((self.samples, samples))
         self.logP    = np.concatenate((self.logP, logP))
->>>>>>> mcmc
