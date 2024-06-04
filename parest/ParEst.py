@@ -1,9 +1,9 @@
 import numpy as np
 from tqdm import tqdm
-from scipy.stats import poisson
+from scipy.stats import poisson, multivariate_normal as mn
 from scipy.special import logsumexp
 from emcee import EnsembleSampler
-from emcee.moves import GaussianMove, WalkMove
+from emcee.autocorr import AutocorrError
 from parest._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect
 
 def evaluate_logP(x, self):
@@ -65,7 +65,7 @@ class DirichletProcess:
         self.dict_draws   = {}
         self.dict_selfunc = {}
         # Sampler settings
-        self.names     = pars + ['a']
+        self.names     = pars + ['log_a']
         self.bounds    = np.array(bounds + [[0, max_a]])
         self.log_V     = np.log(np.sum(np.diff(self.bounds)))
         self.burnin    = int(burnin)
@@ -85,22 +85,23 @@ class DirichletProcess:
                 raise Exception('log_prior must be callable')
             self.log_prior = log_prior
         # Sampler
+        self.initial_state_proposer = mn(np.mean(self.bounds, axis = 1), np.identity(len(self.bounds))*np.diff(self.bounds).flatten()/50)
         self.sampler = EnsembleSampler(nwalkers = 2*(self.n_pars+1),
                                        ndim = len(self.names),
                                        log_prob_fn = evaluate_logP,
                                        args = ([self]),
-#                                       moves = GaussianMove(np.array(list(np.diff(bounds).flatten()/20) + [30.]))
                                        )
         print('Initialising MCMC')
-        self.sampler.run_mcmc(initial_state = np.random.uniform(*self.bounds.T, size = (2*(self.n_pars+1),self.n_pars+1)),
+        self.sampler.run_mcmc(initial_state = self.initial_state_proposer.rvs(2*(self.n_pars+1)),
                               nsteps        = self.burnin,
                               progress      = True,
                               )
-        self.n_steps = int(np.max(self.sampler.get_autocorr_time(quiet = True)))
-        if self.n_steps > self.burnin//50:
+        try:
+            self.n_steps = int(np.max(self.sampler.get_autocorr_time()))
+        except AutocorrError:
             print('Not thermalised yet, keep on exploring')
             self.sampler.run_mcmc(initial_state = None,
-                                  nsteps        = 50*self.n_steps,
+                                  nsteps        = 3*self.burnin,
                                   progress      = True,
                                   )
             self.n_steps = int(np.max(self.sampler.get_autocorr_time(quiet = True)))
@@ -163,7 +164,7 @@ class DirichletProcess:
             logP_N = self.poisson.logpmf(N_b)
         for i in tqdm(range(size), desc = 'Sampling'):
             self.N = N_b[i]
-            self.sampler.run_mcmc(initial_state = None, nsteps = 2*self.n_steps)
+            self.sampler.run_mcmc(initial_state = self.initial_state_proposer.rvs(2*(self.n_pars+1)), nsteps = 3*self.n_steps)
             samples[i] = self.sampler.get_last_sample()[0][idx[i]]
             logP[i]    = self.sampler.compute_log_prob(self.sampler.get_last_sample()[0])[0][idx[i]]
         if self.poisson is not None:
