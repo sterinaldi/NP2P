@@ -9,12 +9,12 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ['parest']
+packages = ['np2p']
 
 [project]
-name = 'parest'
-description = 'Parameter estimation from non-parametric inference'
-version = '0.1.0'
+name = 'NP2P'
+description = 'Parameter Estimation from Non-parametric Inference'
+version = '0.2.0'
 requires-python = '< 3.12'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
@@ -48,5 +48,5 @@ dependencies = [
     ]
 
 [project.urls]
-Repository = "https://github.com/sterinaldi/parest.git"
-Issues = "https://github.com/sterinaldi/parest/issues"
+Repository = "https://github.com/sterinaldi/NP2P.git"
+Issues = "https://github.com/sterinaldi/NP2P/issues"
