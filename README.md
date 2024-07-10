@@ -1,11 +1,11 @@
-# parametric
+# NP2P
 Parameter estimation from nonparametric inference.
 
 ## Installation
 You can install this package from the repository:
 ```
-git clone git@github.com:sterinaldi/parametric.git
-cd parametric
+git clone git@github.com:sterinaldi/NP2P.git
+cd NP2P
 pip install .
 ```
 
@@ -14,7 +14,7 @@ This analysis a set of draws from a non-parametric scheme (represented as list o
 Basic usage:
 ```python
 import numpy as np
-from parest.ParEst import DirichletProcess as DP
+from np2p.ParEst import DirichletProcess as DP
 # Import (or define) your parametric model
 from your_module import parametric_model
 
