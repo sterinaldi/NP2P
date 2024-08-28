@@ -13,7 +13,6 @@ pip install .
 This analysis a set of draws from a non-parametric scheme (represented as list of objects with a `logpdf` method).
 Basic usage:
 ```python
-import numpy as np
 from np2p.ParEst import DirichletProcess as DP
 # Import (or define) your parametric model
 from your_module import parametric_model
