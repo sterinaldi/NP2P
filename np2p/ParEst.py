@@ -4,7 +4,7 @@ from scipy.stats import poisson, multivariate_normal as mn
 from scipy.special import logsumexp
 from emcee import EnsembleSampler
 from emcee.autocorr import AutocorrError
-from parest._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect
+from np2p._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect
 
 def evaluate_logP(x, self):
     return self.log_post(x)
@@ -26,13 +26,16 @@ class DirichletProcess:
                        log_prior = None,
                        n_bins = None,
                        n_data = None,
-                       max_a = 1e5,
+                       max_a = np.log(1e8),
                        selection_function = None,
                        burnin = 10000,
                        ):
-        self.n_pars     = len(pars)
-        self.model      = model
-        self.draws      = draws
+        self.n_pars = len(pars)
+        self.model  = model
+        self.draws  = draws
+        self.bounds = bounds + [[-5, max_a]]
+        self.names  = pars
+        self.log_V  = np.prod(np.diff(self.bounds, axis = 1))
         # Bins
         if domain_bounds is not None:
             self.domain_bounds = np.array(domain_bounds)
@@ -60,10 +63,6 @@ class DirichletProcess:
             self.poisson      = poisson(self.exp_n_bins)
             self.n_pars_total = self.n_pars + 2
             self.N            = self.exp_n_bins
-        # Dictionaries to store pre-computed values
-        self.dict_draws    = {}
-        self.dict_vals     = {}
-        self.dict_selfunc  = {}
         # Domain
         if domain_bounds is not None:
             self.domain_bounds = np.array(domain_bounds)
@@ -73,7 +72,7 @@ class DirichletProcess:
                 self.domain_bounds = self.draws[0].bounds[0]
             except AttributeError:
                 raise Exception('Please provide domain bounds')
-        
+        self.initialise()
         # Selection function
         if selection_function is None:
             self.selection_function = lambda x: np.ones(len(x))
@@ -84,19 +83,19 @@ class DirichletProcess:
         if log_prior is None:
             self.log_prior = lambda x: -self.log_V
         else:
-            if not callable(selection_function):
+            if not callable(log_prior):
                 raise Exception('log_prior must be callable')
             self.log_prior = log_prior
         # Sampler
         self.initial_state_proposer = mn(np.mean(self.bounds, axis = 1), np.identity(len(self.bounds))*np.diff(self.bounds).flatten()/50)
         self.sampler = EnsembleSampler(nwalkers = 2*(self.n_pars+1),
-                                       ndim = len(self.names),
+                                       ndim = self.n_pars+1,
                                        log_prob_fn = evaluate_logP,
                                        args = ([self]),
                                        )
         print('Initialising MCMC')
         self.sampler.run_mcmc(initial_state = self.initial_state_proposer.rvs(2*(self.n_pars+1)),
-                              nsteps        = self.burnin,
+                              nsteps        = burnin,
                               progress      = True,
                               )
         try:
@@ -104,7 +103,7 @@ class DirichletProcess:
         except AutocorrError:
             print('Not thermalised yet, keep on exploring')
             self.sampler.run_mcmc(initial_state = None,
-                                  nsteps        = 3*self.burnin,
+                                  nsteps        = 3*burnin,
                                   progress      = True,
                                   )
             self.n_steps = int(np.max(self.sampler.get_autocorr_time(quiet = True)))
@@ -141,9 +140,9 @@ class DirichletProcess:
         if not all(m > 0):
             return -np.inf
         m /= np.sum(m)
-        a  = x[-1]*m
+        a  = np.exp(x[-1])*m/N
         # Normalisation constant
-        lognorm = gammaln_jit(np.sum(a)) - np.sum(gammaln_jit_vect(a))
+        lognorm = gammaln_jit(np.sum(a)) - np.sum(gammaln_jit_vect(a)) - gammaln_jit(N)
         # Likelihood
         logL    = logsumexp_jit(np.sum(np.multiply(a-1., draws), axis = 1)) - np.log(len(draws))
         return logL + lognorm
