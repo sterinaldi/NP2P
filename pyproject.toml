@@ -45,6 +45,7 @@ dependencies = [
     "matplotlib != 3.6.3",
     "corner",
     "numba",
+    "emcee",
     ]
 
 [project.urls]
