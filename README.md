@@ -22,21 +22,22 @@ domain_bounds = [xmin, xmax]
 # Load non-parametric reconstruction
 draws = load_np_draws(np_file)
 # Parameters of the model
-pars  = ['par1', 'par2']
+names  = ['par1', 'par2']
 # Parameter bounds
 bounds = [[0,1], [0,1]]
-# Number of observations used for the non-parametric analysis
-n_data = N
-# number of samples to draw
-n_samples = K
+# Model name
+model_name = 'mymodel'
+# Desired number of bins
+n_bins = N
 
 sampler = DP(model         = parametric_model, 
-             pars          = pars, 
+             names         = names, 
              bounds        = bounds,
              draws         = draws,
              domain_bounds = domain_bounds,
-             n_data        = n_data,
+             model_name    = model_name,
+             n_bins        = n_bins,
              )
-sampler.run(size = n_samples)
+sampler.run()
 samples = sampler.samples
 ```
