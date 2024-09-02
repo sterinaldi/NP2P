@@ -13,8 +13,8 @@ from distutils.spawn import find_executable
 style.use('default')
 
 # Settings
-#if find_executable('latex'):
-#    rcParams["text.usetex"] = True
+if find_executable('latex'):
+    rcParams["text.usetex"] = True
 rcParams["xtick.labelsize"] = 14
 rcParams["ytick.labelsize"] = 14
 rcParams["xtick.direction"] = "in"
@@ -34,7 +34,7 @@ histdefaults[2] = True   # density
 histdefaults[6] = 'step' # histtype
 hist.__defaults__ = tuple(histdefaults)
 
-def plot_posterior(samples, labels = None, truths = None, save = True, out_folder = '.'):
+def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
     """
     Corner plot of the posterior samples
     
@@ -55,6 +55,7 @@ def plot_posterior(samples, labels = None, truths = None, save = True, out_folde
             raise Exception('Please provide all the parameter names')
         if len(labels) == n_pars-1:
             labels = list(labels) + ['\\beta']
+        labels = ['${}$'.format(lab) for lab in labels]
     if truths is not None:
         if not len(truths) == n_pars-1:
             raise Exception('Please provide all the true values for the parameters')
@@ -70,7 +71,10 @@ def plot_posterior(samples, labels = None, truths = None, save = True, out_folde
                  quiet           = True,
                  )
     if save:
-        fig.savefig(Path(out_folder, 'joint_posterior.pdf'), bbox_inches = 'tight')
+        if model_name is None:
+            fig.savefig(Path(out_folder, 'joint_posterior.pdf'), bbox_inches = 'tight')
+        else:
+            fig.savefig(Path(out_folder, 'joint_posterior_{}.pdf'.format(model_name)), bbox_inches = 'tight')
         plt.close()
     else:
         return fig
