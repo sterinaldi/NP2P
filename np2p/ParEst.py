@@ -1,5 +1,6 @@
 import numpy as np
 from pathlib import Path
+from tqdm import tqdm
 import raynest
 import raynest.model
 from np2p._numba_functions import logsumexp_jit, gammaln_jit, gammaln_jit_vect
@@ -24,19 +25,20 @@ class _Model(raynest.model.Model):
                        model,
                        names,
                        bounds,
-                       min_log_alpha = np.log(1e-5),
-                       max_log_alpha = np.log(1e6),
+                       min_log_alpha      = np.log(1e-5),
+                       max_log_alpha      = np.log(1e8),
                        selection_function = None,
-                       log_prior = None
+                       log_prior          = None
                        ):
         super(_Model,self).__init__()
-        self.bins  = bins
-        if len(bins.shape) == 1:
-            self.dV = self.bins[1]-self.bins[0]
+        self.bins = bins
+        if len(bins.shape) > 1:
+            self.dV = np.prod(self.bins[1,:] - self.bins[0,:])
         else:
-            self.dV    = np.prod(self.bins[1,:] - self.bins[0,:])
-        self.log_q = np.atleast_2d(log_q)
-        self.model = model
+            self.dV = self.bins[1]-self.bins[0]
+        self.log_q     = np.atleast_2d(log_q)
+        self.model     = model
+        self.current_q = 0
         # Selection effects
         if selection_function is None:
             self.selection_function = np.ones(self.log_q[0].shape)
@@ -76,9 +78,11 @@ class _Model(raynest.model.Model):
         # Normalisation constant
         lognorm = gammaln_jit(np.exp(x['log_alpha'])) - np.sum(gammaln_jit_vect(a))
         # Likelihood
-        logL    = logsumexp_jit(np.sum(np.multiply(a-1., self.log_q), axis = 1) + lognorm) - np.log(len(self.log_q))
-        logL    = logsumexp_jit(np.sum(np.multiply(a-1., self.log_q), axis = 1) + lognorm) - np.log(len(self.log_q))
+        logL    = np.sum(np.multiply(a-1., self.log_q[self.current_q])) + lognorm
         return logL
+    
+    def advance(self):
+        self.current_q += 1
     
 class DirichletProcess:
     """
@@ -144,7 +148,7 @@ class DirichletProcess:
             self.dV = np.prod(self.bins[1,:] - self.bins[0,:])
             if self.n_dims == 1:
                 self.bins = self.bins.flatten()
-            self.N    = np.sum(self.n_bins_dim)
+            self.N = np.sum(self.n_bins_dim)
         # Selection function
         if not callable(selection_function) and selection_function is not None:
             raise Exception('selection_function must be callable')
@@ -163,9 +167,7 @@ class DirichletProcess:
             self.log_q = np.atleast_2d(draws*self.dV)
             if not len(log_q[0]) == len(self.bins):
                 raise Exception('The number of bins and the number of evaluated points in logpdf does not match')
-#        self.log_q = np.array([np.random.choice(b, size = len(b), replace = True) for b in self.log_q.T]).T
-#        self.log_q = np.array([log_q_i - logsumexp_jit(log_q_i) for log_q_i in self.log_q])
-        self.log_q = np.array([self.log_q[10]])
+        self.log_q = np.array([log_q_i+np.log(self.dV) - logsumexp_jit(log_q_i+np.log(self.dV)) for log_q_i in self.log_q])
         # Sampler
         self.DD_model = _Model(bins               = self.bins,
                                log_q              = self.log_q,
@@ -176,22 +178,22 @@ class DirichletProcess:
                                selection_function = self.selection_function,
                                log_prior          = self.log_prior,
                                )
-        self.sampler = raynest.raynest(self.DD_model,
-                                       verbose   = self.verbose,
-                                       nnest     = 1,
-                                       nensemble = 1,
-                                       nlive     = 1000,
-                                       maxmcmc   = 5000,
-                                       output    = self.out_folder,
-                                       )
                                        
     def run(self):
-        self.sampler.run()
-        # Posterior samples and evidence
-        NS_samples          = self.sampler.posterior_samples.ravel()
-        self.samples        = np.array([NS_samples[lab] for lab in self.DD_model.names]).T
-        self.samples[:,-1]  = np.exp(self.samples[:,-1])/self.N
-        self.logZ           = self.sampler.logZ
+        self.samples = np.zeros((len(self.log_q), len(self.names)+1))
+        for i in tqdm(range(len(self.log_q)), desc = 'Sampling'):
+            sampler = raynest.raynest(self.DD_model,
+                                      verbose   = 0,
+                                      nnest     = 1,
+                                      nensemble = 1,
+                                      nlive     = 100,
+                                      maxmcmc   = 5000,
+                                      output    = self.out_folder,
+                                      )
+            sampler.run()
+            NS_samples         = sampler.posterior_samples.ravel()
+            self.samples[i]    = np.copy(np.array([NS_samples[lab][-1] for lab in self.DD_model.names]))
+            self.samples[i,-1] = np.exp(self.samples[i,-1])/self.N
+            self.DD_model.advance()
         # Save data
         np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(self.names + ['beta']))
-        np.savetxt(Path(self.out_folder, 'logZ_{}.txt'.format(self.model_name)), np.atleast_1d([self.logZ]))
