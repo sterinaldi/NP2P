@@ -86,27 +86,39 @@ class _Model(raynest.model.Model):
     
 class DirichletProcess:
     """
-    Class to do parameter estimation using a set of non-parametric reconstructions.
+    Class to perform parameter estimation using a set of non-parametric reconstructions.
     
     Arguments:
-        callable model: parametric model
-        list-of-str pars: parameters of the model
-        np.ndarray bounds: 2D list of bounds, one per parameter: [[xmin, xmax], [ymin, ymax], ...]
+        callable model:                            parametric model
+        list-of-str names:                         parameters of the model
+        np.ndarray bounds:                         2D list of bounds, one per parameter: [[xmin, xmax], [ymin, ymax], ...]
+        list draws:                                list of non-parametric reconstructions (either instances with pdf/logpdf method, callables or np.ndarrays)
+        np.ndarray domain_bounds:                  array storing the bounds of the reconstruction
+        np.ndarray bins:                           array storing the value of each bin. If None, it is built using domain_bounds
+        callable log_prior:                        prior on the parameters of the model. Default is uniform.
+        int or np.ndarray n_bins:                  number of bins (either single value or list of values per dimension)
+        int n_data:                                number of observations used to reconstruct the non-parametric distribution. Used to estimate the number of bins
+        float max_alpha:                           maximum value for the alpha parameter
+        callable or np.ndarray selection_function: selection function
+        str or Path out_folder:                    output folder
+        str model_name:                            name of the model, for plotting and saving
+    
+    Returns:
+        DirichletProcess: instance of the class
     """
     def __init__(self, model,
                        names,
                        bounds,
                        draws,
-                       domain_bounds = None,
-                       bins = None,
-                       log_prior = None,
-                       n_bins = None,
-                       n_data = None,
-                       max_alpha = 1e8,
+                       domain_bounds      = None,
+                       bins               = None,
+                       log_prior          = None,
+                       n_bins             = None,
+                       n_data             = None,
+                       max_alpha          = 1e8,
                        selection_function = None,
-                       out_folder = '.',
-                       verbose = False,
-                       model_name = '',
+                       out_folder         = '.',
+                       model_name         = '',
                        ):
         self.model  = model
         self.draws  = draws
@@ -116,7 +128,6 @@ class DirichletProcess:
         self.model_name = model_name
         self.out_folder = Path(out_folder)
         self.out_folder.mkdir(exist_ok = True)
-        self.verbose = int(verbose*2)
         # Bins
         if bins is not None:
             self.bins   = bins
@@ -159,8 +170,10 @@ class DirichletProcess:
         # Evaluate draws
         if hasattr(draws[0], 'logpdf'):
             self.log_q = np.atleast_2d([d.logpdf(self.bins) + np.log(self.dV) for d in draws])
-        elif hasattr(draws[0], 'pdf') or callable(draws[0]):
+        elif hasattr(draws[0], 'pdf'):
             self.log_q = np.atleast_2d([np.log(d.pdf(self.bins)*self.dV) for d in draws])
+        elif callable(draws[0]):
+            self.log_q = np.atleast_2d([np.log(d(self.bins)*self.dV) for d in draws])
         elif isinstance(draws[0], (list, np.ndarray, float)):
             if bins is None:
                 raise Exception('Please provide both bins and evaluated logpdf')
