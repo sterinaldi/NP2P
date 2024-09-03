@@ -48,10 +48,13 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     Returns:
         plt.figure: figure
     """
-    n_pars = samples.shape[-1]
+    if len(samples.shape) > 1:
+        n_pars = samples.shape[-1]
+    else:
+        n_pars = 1
+        samples = np.atleast_2d(samples).T
     if labels is not None:
         if not (len(labels) == n_pars or len(labels) == n_pars-1):
-            print(labels)
             raise Exception('Please provide all the parameter names')
         if len(labels) == n_pars-1:
             labels = list(labels) + ['\\beta']
@@ -121,6 +124,9 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     p = {}
     for perc in percentiles:
         p[perc] = np.percentile(q, perc, axis = 0)
+    norm = np.sum(p[50]*(bins[1]-bins[0]))
+    for perc in percentiles:
+        p[perc] /= norm
     color_med, color_68, color_90 = colors_data
     # CR
     ax.fill_between(bins, p[95], p[5], color = color_90, alpha = 0.25)
@@ -135,6 +141,9 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     p_par = {}
     for perc in percentiles:
         p_par[perc] = np.percentile(q_par, perc, axis = 0)
+    norm = np.sum(p_par[50]*(bins[1]-bins[0]))
+    for perc in percentiles:
+        p_par[perc] /= norm
     color_med, color_68, color_90 = colors_inferred
     # CR
     ax.fill_between(bins, p_par[95], p_par[5], color = color_90, alpha = 0.25)
@@ -153,7 +162,75 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     ax.legend(loc = 0)
     fig.align_labels()
     if save:
-        fig.savefig(Path(out_folder, '{0}.pdf'.format(model_name)), bbox_inches = 'tight')
+        fig.savefig(Path(out_folder, 'plot_{0}.pdf'.format(model_name)), bbox_inches = 'tight')
         plt.close()
+    else:
+        return fig
+
+def plot_model_selection(models, folder, names = None, out_folder = '.', name = None, save = True):
+    """
+    Plot log(beta) credible intervals for different models.
+    
+    Arguments:
+        list-of-str models:     list of model labels
+        Path or str folder:     folder containing the posterior samples
+        list-of-str names:      list of model names (LaTeX is accepted)
+        Path or str out_folder: folder where to save the plot
+        str name:               name to give to the plot
+        bool save:              whether to save the plot
+    
+    Return:
+        plt.figure: the figure
+    """
+    step = 0.45
+    marker    = 'o'
+    color     = 'steelblue'
+    facecolor = 'w'
+    edgecolor = color
+    fig, ax = plt.subplots(figsize = (6.4, len(models)*step))
+    
+    if names is None:
+        names = models
+    
+    betas  = [np.log(np.genfromtxt(Path(folder, 'posterior_samples_{}.txt'.format(model)), names = True)['beta']) for model in models]
+    # Ascending betas
+    medians  = np.median(betas, axis = 1)
+    names    = np.array(names)[np.argsort(medians)]
+    betas    = np.array(betas)[np.argsort(medians)]
+    
+    # Axis limits
+    bmin     = np.min([np.percentile(beta, 5) for beta in betas])
+    bmax     = np.max([np.percentile(beta, 95) for beta in betas])
+    midpoint = (bmin+bmax)/2
+    range    = (bmax-bmin)
+    # Set right limits
+    ax.scatter([bmax], [-step], marker = '', c = 'none')
+    ax.scatter([bmin], [-step], marker = '', c = 'none')
+    
+    for i, (beta, n) in enumerate(zip(betas, names)):
+        ll, l, m, u, uu = np.percentile(beta, [5, 16, 50, 84, 95])
+        if m < bmin + (0.1*range):
+            textpos = bmin
+            ha = 'left'
+        elif m > bmin + (0.9*range):
+            textpos = bmax
+            ha = 'right'
+        else:
+            textpos = m
+            ha = 'center'
+        ax.errorbar([m], [i*step], xerr = [[m-ll],[uu-m]], marker = '', color = color, alpha = 0.5, lw = 1, capsize = 2)
+        ax.errorbar([m], [i*step], xerr = [[m-l],[u-m]], marker = '', color = color, alpha = 0.75, lw = 1, capsize = 2)
+        ax.scatter([m], [i*step], marker = marker, edgecolors = edgecolor, facecolors = facecolor, zorder = 3*len(betas)+10, lw = 1)
+        ax.text(x = textpos, y = i*step+0.185, s = '$\\mathrm{'+'{}'.format(n)+'}$', ha = ha, va = 'center')
+        
+    ax.set_ylim(-0.6, (len(betas))*step)
+    ax.tick_params(axis='y', which='both', left=False, labelleft=False)
+    ax.set_xlabel('$\\log\\beta$')
+    if save:
+        if name is not None:
+            fig.savefig(Path(out_folder, 'model_selection_{}.pdf'.format(name)), bbox_inches = 'tight')
+        else:
+            fig.savefig(Path(out_folder, 'model_selection.pdf'), bbox_inches = 'tight')
+        plt.close(fig)
     else:
         return fig
