@@ -60,6 +60,10 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
         if not len(truths) == n_pars-1:
             raise Exception('Please provide all the true values for the parameters')
         truths = list(truths) + [None]
+    # Prune plot from very large values of beta (orders of magnitude)
+    exp_beta = np.median(samples[:,-1])
+    unc_beta = np.diff(np.percentile(samples[:,-1], [5,95]))
+    samples  = samples[np.abs(samples[:,-1]-exp_beta) < 3*unc_beta]
     # Corner plot
     fig = corner(samples,
                  labels          = labels,

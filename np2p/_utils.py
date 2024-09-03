@@ -1,4 +1,5 @@
 import numpy as np
+from np2p._numba_functions import gammaln_jit, gammaln_jit_vect
 
 def recursive_grid(bounds, n_pts):
     """
@@ -24,3 +25,22 @@ def recursive_grid(bounds, n_pts):
             for gi in grid_nm1:
                 grid.append([di,*gi])
         return np.array(grid)
+
+def log_likelihood(x, DP):
+    """
+    Warning: sign inverted for optimisation
+    """
+    return np.array([-(_log_likelihood(xi, DP) + DP.log_prior(xi[:-1])) for xi in x])
+
+def _log_likelihood(x, DP):
+    # Base distribution
+    B  = DP.model(DP.bins, *x[:-1])*DP.selection_function*DP.dV
+    if not all(B > 0):
+        return -np.inf
+    B /= np.sum(B)
+    a  = np.exp(x[-1])*B
+    # Normalisation constant
+    lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
+    # Likelihood
+    logL    = np.sum(np.multiply(a-1., DP.log_q[DP.current_q])) + lognorm
+    return logL
