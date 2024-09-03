@@ -55,9 +55,13 @@ class DirichletProcess:
         # Bins
         if bins is not None:
             self.bins   = bins
-            self.n_dims = len(bins[0])
+            if len(bins.shape) > 1:
+                self.n_dims = len(bins[0])
+                self.dV     = np.prod(self.bins[1,:] - self.bins[0,:])
+            else:
+                self.n_dims = 1
+                self.dV     = self.bins[1]-self.bins[0]
             self.N      = len(bins)
-            self.dV     = np.prod(self.bins[1,:] - self.bins[0,:])
         else:
             if domain_bounds is not None:
                 self.domain_bounds = np.atleast_2d(domain_bounds)
@@ -108,7 +112,7 @@ class DirichletProcess:
             if bins is None:
                 raise Exception('Please provide both bins and evaluated logpdf')
             self.log_q = np.atleast_2d(draws*self.dV)
-            if not len(log_q[0]) == len(self.bins):
+            if not len(self.log_q[0]) == len(self.bins):
                 raise Exception('The number of bins and the number of evaluated points in logpdf does not match')
         self.log_q = np.array([log_q_i+np.log(self.dV) - logsumexp_jit(log_q_i+np.log(self.dV)) for log_q_i in self.log_q])
         # Optimiser
