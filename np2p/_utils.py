@@ -34,11 +34,11 @@ def log_likelihood(x, DP):
 
 def _log_likelihood(x, DP):
     # Base distribution
-    B  = DP.model(DP.bins, *x[:-1])*DP.selection_function*DP.dV
+    B  = DP.model(DP.current_bins, *x[:-1])*DP.eval_selection_function
     if not all(B > 0):
         return -np.inf
     B /= np.sum(B)
-    a  = np.exp(x[-1])*B
+    a  = np.exp(x[-1])*B.flatten()
     # Normalisation constant
     lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
     # Likelihood

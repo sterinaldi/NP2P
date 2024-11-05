@@ -158,7 +158,7 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     else:
         ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
     ax.set_ylabel('$p({0})$'.format(label))
-    ax.set_ylim(bottom = 1e-5, top = np.max([np.max(p[95]), np.max(p_par[95])])*1.1)
+    ax.set_ylim(bottom = np.min([np.min(p[5]), np.min(p_par[5])])*0.9, top = np.max([np.max(p[95]), np.max(p_par[95])])*1.1)
     ax.legend(loc = 0)
     fig.align_labels()
     if save:
