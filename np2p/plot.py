@@ -29,10 +29,17 @@ rcParams["grid.linestyle"]  = "dotted"
 rcParams["lines.linewidth"] = 0.7
 rcParams["hist.bins"]       = "sqrt"
 rcParams["savefig.bbox"]    = "tight"
-histdefaults = list(hist.__defaults__)
-histdefaults[2] = True   # density
-histdefaults[6] = 'step' # histtype
-hist.__defaults__ = tuple(histdefaults)
+
+def nicer_hist(func):
+    def decorated_func(*args, **kwargs):
+        if not 'density' in kwargs.keys():
+            kwargs['density'] = True
+        if not 'histtype' in kwargs.keys():
+            kwargs['histtype'] = 'step'
+        return func(*args, **kwargs)
+    return decorated_func
+
+plt.hist = nicer_hist(plt.hist)
 
 def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
     """
@@ -163,6 +170,8 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     fig.align_labels()
     if save:
         fig.savefig(Path(out_folder, 'plot_{0}.pdf'.format(model_name)), bbox_inches = 'tight')
+        ax.set_yscale('log')
+        fig.savefig(Path(out_folder, 'plot_log_{0}.pdf'.format(model_name)), bbox_inches = 'tight')
         plt.close()
     else:
         return fig
