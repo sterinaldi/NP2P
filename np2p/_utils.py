@@ -1,6 +1,8 @@
 import numpy as np
 from np2p._numba_functions import gammaln_jit, gammaln_jit_vect
 
+small_positive = 1e-10
+
 def recursive_grid(bounds, n_pts):
     """
     Recursively generates the n-dimensional grid points (extremes are excluded).
@@ -30,13 +32,13 @@ def log_likelihood(x, DP):
     """
     Warning: sign inverted for optimisation
     """
-    return np.array([-(_log_likelihood(xi, DP) + DP.log_prior(xi[:-1])) for xi in x])
+    return -(_log_likelihood(x, DP) + DP.log_prior(x[:-1]))
 
 def _log_likelihood(x, DP):
     # Base distribution
     B  = DP.model(DP.current_bins, *x[:-1])*DP.eval_selection_function
     if not all(B > 0):
-        return -np.inf
+        B[B==0] = small_positive
     B /= np.sum(B)
     a  = np.exp(x[-1])*B.flatten()
     # Normalisation constant
