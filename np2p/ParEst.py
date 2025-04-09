@@ -1,9 +1,10 @@
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from pyswarms.single.global_best import GlobalBestPSO
+from scipy.stats import qmc
+from scipy.optimize import minimize
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood
+from np2p._utils import recursive_grid, log_likelihood, _log_likelihood
 
 class DirichletProcess:
     """
@@ -37,14 +38,11 @@ class DirichletProcess:
                        log_prior          = None,
                        n_bins             = None,
                        n_data             = None,
-                       max_alpha          = 1e8,
-                       min_alpha          = 1e-8,
+                       max_alpha          = 1e6,
+                       min_alpha          = 1e-6,
                        selection_function = None,
                        out_folder         = '.',
                        model_name         = '',
-                       optimiser_options  = {'c1': 0.5, 'c2': 0.3, 'w':0.9},
-                       n_particles        = 10,
-                       n_steps            = 1000,
                        ):
         self.model  = model
         self.draws  = draws
@@ -127,13 +125,9 @@ class DirichletProcess:
             if not len(self.log_q[0]) == len(self.bins[0]):
                 raise Exception('The number of bins and the number of evaluated points in logpdf does not match')
         self.log_q = [log_q_i - logsumexp_jit(log_q_i) for log_q_i in self.log_q]
-        # Optimiser
-        self.optimiser_options = optimiser_options
-        self.n_particles       = int(n_particles)
-        self.n_steps           = int(n_steps)
 
     def run(self):
-        self.samples = np.zeros((len(self.log_q), len(self.names)+1))
+        self.samples = []
         for i in tqdm(range(len(self.log_q)), desc = 'Sampling'):
             self.current_q = i
             if not self.fixed_bins:
@@ -142,17 +136,9 @@ class DirichletProcess:
                     self.eval_selection_function = np.ones(np.shape(self.current_bins)).flatten()
                 else:
                     self.eval_selection_function = self.selection_function(self.current_bins).flatten()
-            self.optimiser = GlobalBestPSO(n_particles = self.n_particles,
-                                           dimensions  = len(self.bounds[0]),
-                                           options     = self.optimiser_options,
-                                           bounds      = self.bounds,
-                                           )
-            cost, pos      = self.optimiser.optimize(objective_func = log_likelihood,
-                                                     iters          = self.n_steps,
-                                                     verbose        = False,
-                                                     DP             = self,
-                                                     )
-            self.samples[i]    = np.copy(np.array(pos))
-            self.samples[i,-1] = np.exp(self.samples[i,-1])/self.N[self.current_q]
+        
+            self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
+            self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q]
+        self.samples = np.array(self.samples)
         # Save data
         np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(self.names + ['beta']))
