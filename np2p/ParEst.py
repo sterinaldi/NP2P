@@ -1,10 +1,10 @@
 import numpy as np
+import warnings
 from pathlib import Path
 from tqdm import tqdm
-from scipy.stats import qmc
 from scipy.optimize import minimize
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood, _log_likelihood
+from np2p._utils import recursive_grid, log_likelihood
 
 class DirichletProcess:
     """
@@ -85,10 +85,12 @@ class DirichletProcess:
             else:
                 if n_data is not None:
                     self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.sqrt(n_data)/self.n_dims)
+                    self.n_data     = n_data
                 else:
                     try:
                         # If FIGARO, use stored number of samples
                         self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.sqrt(self.draws[0].n_pts)/self.n_dims)
+                        self.n_data     = self.draws[0].n_pts
                     except AttributeError:
                         raise Exception('Please provide either n_data or n_bins')
             self.bins = recursive_grid(self.domain_bounds, self.n_bins_dim)
@@ -136,9 +138,10 @@ class DirichletProcess:
                     self.eval_selection_function = np.ones(np.shape(self.current_bins)).flatten()
                 else:
                     self.eval_selection_function = self.selection_function(self.current_bins).flatten()
-        
-            self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
-            self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q]
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="invalid value encountered in subtract")
+                self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
+            self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q] + np.random.uniform(0,1e-5)
         self.samples = np.array(self.samples)
         # Save data
-        np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(self.names + ['beta']))
+        np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(self.names + ['beta_DP']))
