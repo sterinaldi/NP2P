@@ -48,7 +48,7 @@ class DirichletProcess:
         self.model   = model
         self.draws   = draws
         if not process in implemented_processes:
-            raise Exception(f'The {process} process is not implemented. Please choose between one of the following: {implemented_processes}')
+            raise Exception(f'The {process} process is not implemented. Please choose between one of the following: '+', '.join(implemented_processes))
         self.process = process
         if bounds is not None:
             self.bounds = np.atleast_2d(bounds + [[np.log(min_alpha), np.log(max_alpha)]]).T
