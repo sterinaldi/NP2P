@@ -4,7 +4,7 @@ from pathlib import Path
 from tqdm import tqdm
 from scipy.optimize import minimize
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood
+from np2p._utils import recursive_grid, log_likelihood, implemented_processes
 
 class DirichletProcess:
     """
@@ -43,9 +43,13 @@ class DirichletProcess:
                        selection_function = None,
                        out_folder         = '.',
                        model_name         = '',
+                       process            = 'dirichlet',
                        ):
-        self.model  = model
-        self.draws  = draws
+        self.model   = model
+        self.draws   = draws
+        if not process in implemented_processes:
+            raise Exception(f'The {process} process is not implemented. Please choose between one of the following: {implemented_processes}')
+        self.process = process
         if bounds is not None:
             self.bounds = np.atleast_2d(bounds + [[np.log(min_alpha), np.log(max_alpha)]]).T
         else:
