@@ -50,10 +50,16 @@ class DirichletProcess:
         if not process in implemented_processes:
             raise Exception(f'The {process} process is not implemented. Please choose between one of the following: '+', '.join(implemented_processes))
         self.process = process
-        if bounds is not None:
-            self.bounds = np.atleast_2d(bounds + [[np.log(min_alpha), np.log(max_alpha)]]).T
+        if self.process == 'dirichlet':
+            if bounds is not None:
+                self.bounds = np.atleast_2d(bounds + [[np.log(min_alpha), np.log(max_alpha)]]).T
+            else:
+                self.bounds = np.atleast_2d([[np.log(min_alpha), np.log(max_alpha)]]).T
         else:
-            self.bounds = np.atleast_2d([[np.log(min_alpha), np.log(max_alpha)]]).T
+            if bounds is not None:
+                self.bounds = np.atleast_2d(bounds).T
+            else:
+                raise Exception('Please provide bounds for the model parameters')
         if names is not None:
             self.names = names
         else:
@@ -145,7 +151,12 @@ class DirichletProcess:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message="invalid value encountered in subtract")
                 self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
-            self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q] + np.random.uniform(0,1e-5)
+            if self.process == 'dirichlet':
+                self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q]
         self.samples = np.array(self.samples)
         # Save data
-        np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(self.names + ['beta_DP']))
+        if self.process == 'dirichlet':
+            all_names = self.names + ['beta_DP']
+        else:
+            all_names = self.names
+        np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(all_names))

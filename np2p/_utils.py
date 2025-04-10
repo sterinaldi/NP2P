@@ -36,8 +36,12 @@ def log_likelihood(x, DP):
     return -(_log_likelihood(x, DP) + DP.log_prior(x[:-1]))
 
 def _log_likelihood(x, DP):
+    if DP.process == 'dirichlet':
+        pars = x[:-1]
+    elif DP.process == 'poisson':
+        pars = x
     # Base distribution
-    B  = DP.model(DP.current_bins, *x[:-1])*DP.eval_selection_function
+    B  = DP.model(DP.current_bins, *pars)*DP.eval_selection_function
     if not all(B > 0):
         B[B == 0] = small_positive
     B /= np.sum(B)

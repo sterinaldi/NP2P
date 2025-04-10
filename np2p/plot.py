@@ -3,12 +3,15 @@ import warnings
 
 from pathlib import Path
 from corner import corner
+from inspect import signature
 
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib import style
 from matplotlib.pyplot import hist
 from distutils.spawn import find_executable
+
+from np2p._utils import implemented_processes
 
 style.use('default')
 
@@ -41,12 +44,13 @@ def nicer_hist(func):
 
 plt.hist = nicer_hist(plt.hist)
 
-def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
+def plot_posterior(samples, process, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
     """
     Corner plot of the posterior samples
     
     Arguments:
         np.ndarray samples: the posterior samples
+        str process:
         list-of-str labels: LaTeX-style labels
         np.ndarray truths: true values of parameters (if known)
         bool save: whether to save the plot
@@ -55,6 +59,8 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     Returns:
         plt.figure: figure
     """
+    if not process in implemented_processes:
+        raise Exception(f'The {process} process is not implemented. Please choose between one of the following: '+', '.join(implemented_processes))
     if len(samples.shape) > 1:
         n_pars = samples.shape[-1]
     else:
@@ -63,27 +69,42 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     if labels is not None:
         if not (len(labels) == n_pars or len(labels) == n_pars-1):
             raise Exception('Please provide all the parameter names')
-        if len(labels) == n_pars-1:
+        if len(labels) == n_pars-1 and process == 'dirichlet':
             labels = list(labels) + ['\\beta_\\mathrm{DP}']
         labels = ['${}$'.format(lab) for lab in labels]
     if truths is not None:
-        if not len(truths) == n_pars-1:
+        if not ((len(truths) == n_pars-1) or (len(truths) == n_pars)):
             raise Exception('Please provide all the true values for the parameters')
-        truths = list(truths) + [None]
-    # Prune plot from very large values of beta (orders of magnitude)
-    exp_beta = np.median(samples[:,-1])
-    unc_beta = np.diff(np.percentile(samples[:,-1], [5,95]))
-    samples  = samples[np.abs(samples[:,-1]-exp_beta) < 3*unc_beta]
+        if process == 'dirichlet':
+            truths = list(truths) + [None]
+    if process == 'dirichlet':
+        # Prune plot from very large values of beta (orders of magnitude)
+        exp_beta = np.median(samples[:,-1])
+        unc_beta = np.diff(np.percentile(samples[:,-1], [5,95]))
+        samples  = samples[np.abs(samples[:,-1]-exp_beta) < 3*unc_beta]
     # Corner plot
-    fig = corner(samples,
-                 labels          = labels,
-                 truths          = truths,
-                 quantiles       = [0.16, 0.5, 0.84],
-                 show_titles     = True,
-                 hist_kwargs     = {'density': True, 'linewidth':0.7},
-                 hist_bin_factor = int(np.sqrt(len(samples)))/20,
-                 quiet           = True,
-                 )
+    if samples.shape[-1] > 1 and truths is not None:
+        fig = corner(samples,
+                     labels          = labels,
+                     truths          = truths,
+                     quantiles       = [0.16, 0.5, 0.84],
+                     show_titles     = True,
+                     hist_kwargs     = {'density': True, 'linewidth':0.7},
+                     hist_bin_factor = int(np.sqrt(len(samples)))/20,
+                     quiet           = True,
+                     )
+    else:
+        # Bug in corner for 1d dist with true val
+        fig = corner(samples,
+             labels          = labels,
+             truths          = None,
+             quantiles       = [0.16, 0.5, 0.84],
+             show_titles     = True,
+             hist_kwargs     = {'density': True, 'linewidth':0.7},
+             hist_bin_factor = int(np.sqrt(len(samples)))/20,
+             quiet           = True,
+             )
+        fig.axes[0].axvline(truths[0])
     if save:
         if model_name is None:
             fig.savefig(Path(out_folder, 'joint_posterior.pdf'), bbox_inches = 'tight')
@@ -143,6 +164,8 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     ax.plot(bins, p[50], lw = 0.7, color = color_med, label = label_data)
     
     # Evaluate parametric draws
+    if len(signature(model).parameters) == samples.shape[-1]:
+        samples = samples[:,:-1]
     q_par = np.array([model(bins, *s) for s in samples])
     # Percentiles
     p_par = {}
