@@ -2,6 +2,7 @@ import numpy as np
 from np2p._numba_functions import gammaln_jit, gammaln_jit_vect
 
 small_positive = 1e-10
+implemented_prcesses = ['dirichlet', 'poisson']
 
 def recursive_grid(bounds, n_pts):
     """
@@ -34,23 +35,21 @@ def log_likelihood(x, DP):
     """
     return -(_log_likelihood(x, DP) + DP.log_prior(x[:-1]))
 
-def _log_likelihood(x, DP, process = 'dirichlet'):
+def _log_likelihood(x, DP):
     # Base distribution
     B  = DP.model(DP.current_bins, *x[:-1])*DP.eval_selection_function
     if not all(B > 0):
         B[B == 0] = small_positive
     B /= np.sum(B)
-    if process == 'dirichlet':
+    if DP.process == 'dirichlet':
         a  = np.exp(x[-1])*B.flatten()
         # Normalisation constant
         lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
         # Likelihood
         logL    = np.sum(np.multiply(a-1., DP.log_q[DP.current_q])) + lognorm
-    elif process == 'poisson':
+    elif DP.process == 'poisson':
         # Counts
         exp_counts = (DP.n_data*B)
         obs_counts = (DP.n_data*np.exp(DP.log_q[DP.current_q]))
-        logL = np.sum(obs_counts*np.log(exp_counts) - exp_counts - gammaln_jit_vect(obs_counts))
-    elif process == 'kl_divergence':
-        return -np.sum(np.exp(DP.log_q[DP.current_q])*(DP.log_q[DP.current_q] - np.log(B)))
+        logL       = np.sum(obs_counts*np.log(exp_counts) - exp_counts - gammaln_jit_vect(obs_counts))
     return logL
