@@ -2,7 +2,7 @@ import numpy as np
 from np2p._numba_functions import gammaln_jit, gammaln_jit_vect
 
 small_positive = 1e-10
-implemented_prcesses = ['dirichlet', 'poisson']
+implemented_processes = ['dirichlet', 'poisson']
 
 def recursive_grid(bounds, n_pts):
     """
