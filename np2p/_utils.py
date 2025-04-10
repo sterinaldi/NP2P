@@ -34,15 +34,23 @@ def log_likelihood(x, DP):
     """
     return -(_log_likelihood(x, DP) + DP.log_prior(x[:-1]))
 
-def _log_likelihood(x, DP):
+def _log_likelihood(x, DP, process = 'dirichlet'):
     # Base distribution
     B  = DP.model(DP.current_bins, *x[:-1])*DP.eval_selection_function
     if not all(B > 0):
-        B[B==0] = small_positive
+        B[B == 0] = small_positive
     B /= np.sum(B)
-    a  = np.exp(x[-1])*B.flatten()
-    # Normalisation constant
-    lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
-    # Likelihood
-    logL    = np.sum(np.multiply(a-1., DP.log_q[DP.current_q])) + lognorm
+    if process == 'dirichlet':
+        a  = np.exp(x[-1])*B.flatten()
+        # Normalisation constant
+        lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
+        # Likelihood
+        logL    = np.sum(np.multiply(a-1., DP.log_q[DP.current_q])) + lognorm
+    elif process == 'poisson':
+        # Counts
+        exp_counts = (DP.n_data*B)
+        obs_counts = (DP.n_data*np.exp(DP.log_q[DP.current_q]))
+        logL = np.sum(obs_counts*np.log(exp_counts) - exp_counts - gammaln_jit_vect(obs_counts))
+    elif process == 'kl_divergence':
+        return -np.sum(np.exp(DP.log_q[DP.current_q])*(DP.log_q[DP.current_q] - np.log(B)))
     return logL
