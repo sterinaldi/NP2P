@@ -64,7 +64,7 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
         if not (len(labels) == n_pars or len(labels) == n_pars-1):
             raise Exception('Please provide all the parameter names')
         if len(labels) == n_pars-1:
-            labels = list(labels) + ['\\beta']
+            labels = list(labels) + ['\\beta_\\mathrm{DP}']
         labels = ['${}$'.format(lab) for lab in labels]
     if truths is not None:
         if not len(truths) == n_pars-1:
@@ -165,7 +165,7 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     else:
         ax.set_xlabel('${0}\ [{1}]$'.format(label, unit))
     ax.set_ylabel('$p({0})$'.format(label))
-    ax.set_ylim(bottom = np.min([np.min(p[5]), np.min(p_par[5])])*0.9, top = np.max([np.max(p[95]), np.max(p_par[95])])*1.1)
+    ax.set_ylim(bottom = np.max([np.min(p[5]), np.min(p_par[5])])*0.9, top = np.max([np.max(p[95]), np.max(p_par[95])])*1.1)
     ax.legend(loc = 0)
     fig.align_labels()
     if save:
@@ -234,7 +234,7 @@ def plot_model_selection(models, folder, names = None, out_folder = '.', name = 
         
     ax.set_ylim(-0.6, (len(betas))*step)
     ax.tick_params(axis='y', which='both', left=False, labelleft=False)
-    ax.set_xlabel('$\\log\\beta$')
+    ax.set_xlabel('$\\log\\beta_\\mathrm{DP}$')
     if save:
         if name is not None:
             fig.savefig(Path(out_folder, 'model_selection_{}.pdf'.format(name)), bbox_inches = 'tight')
