@@ -44,7 +44,7 @@ def nicer_hist(func):
 
 plt.hist = nicer_hist(plt.hist)
 
-def plot_posterior(samples, process, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
+def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
     """
     Corner plot of the posterior samples
     
@@ -59,8 +59,6 @@ def plot_posterior(samples, process, labels = None, truths = None, save = True, 
     Returns:
         plt.figure: figure
     """
-    if not process in implemented_processes:
-        raise Exception(f'The {process} process is not implemented. Please choose between one of the following: '+', '.join(implemented_processes))
     if len(samples.shape) > 1:
         n_pars = samples.shape[-1]
     else:
@@ -69,15 +67,18 @@ def plot_posterior(samples, process, labels = None, truths = None, save = True, 
     if labels is not None:
         if not (len(labels) == n_pars or len(labels) == n_pars-1):
             raise Exception('Please provide all the parameter names')
-        if len(labels) == n_pars-1 and process == 'dirichlet':
-            labels = list(labels) + ['\\beta_\\mathrm{DP}']
+        dirichlet = False
+        if len(labels) == n_pars-1:
+            dirichlet = True
+            labels  = list(labels) + ['\\beta_\\mathrm{DP}']
         labels = ['${}$'.format(lab) for lab in labels]
     if truths is not None:
         if not ((len(truths) == n_pars-1) or (len(truths) == n_pars)):
             raise Exception('Please provide all the true values for the parameters')
-        if process == 'dirichlet':
+        if len(truths) == n_pars-1:
+            dirichlet = True
             truths = list(truths) + [None]
-    if process == 'dirichlet':
+    if dirichlet:
         # Prune plot from very large values of beta (orders of magnitude)
         exp_beta = np.median(samples[:,-1])
         unc_beta = np.diff(np.percentile(samples[:,-1], [5,95]))
