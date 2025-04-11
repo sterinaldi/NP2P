@@ -83,6 +83,10 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
         exp_beta = np.median(samples[:,-1])
         unc_beta = np.diff(np.percentile(samples[:,-1], [5,95]))
         samples  = samples[np.abs(samples[:,-1]-exp_beta) < 3*unc_beta]
+    # Check that samples are not all equal
+    for i, s in enumerate(samples):
+        if len(set(s)) == 1:
+            samples[i] += np.random.uniform(-samples[i]/10000,samples[i]/10000)
     # Corner plot
     if samples.shape[-1] > 1 and truths is not None:
         fig = corner(samples,
