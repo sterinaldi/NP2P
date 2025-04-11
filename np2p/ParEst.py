@@ -44,6 +44,7 @@ class DirichletProcess:
                        out_folder         = '.',
                        model_name         = '',
                        process            = 'dirichlet',
+                       verbose            = True,
                        ):
         self.model   = model
         self.draws   = draws
@@ -68,6 +69,7 @@ class DirichletProcess:
         self.model_name = model_name
         self.out_folder = Path(out_folder)
         self.out_folder.mkdir(exist_ok = True)
+        self.verbose = verbose
         # Bins
         if bins is not None:
             self.fixed_bins = False
@@ -138,9 +140,11 @@ class DirichletProcess:
                 raise Exception('The number of bins and the number of evaluated points in logpdf does not match')
         self.log_q = [log_q_i - logsumexp_jit(log_q_i) for log_q_i in self.log_q]
 
-    def run(self):
+    def run(self, verbose = None):
+        if verbose is None:
+            verbose = self.verbose
         self.samples = []
-        for i in tqdm(range(len(self.log_q)), desc = 'Sampling'):
+        for i in tqdm(range(len(self.log_q)), desc = 'Sampling', disable = not(verbose)):
             self.current_q = i
             if not self.fixed_bins:
                 self.current_bins = self.bins[self.current_q]
