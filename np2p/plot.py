@@ -86,7 +86,7 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     # Check that samples are not all equal
     for i, s in enumerate(samples):
         if len(set(s)) == 1:
-            samples[i] += np.random.uniform(-samples[i]/10000,samples[i]/10000)
+            samples[i] += np.random.uniform(-samples[i]/100,samples[i]/100, size = len(samples[i]))
     # Corner plot
     if samples.shape[-1] > 1 and truths is not None:
         fig = corner(samples,
@@ -200,7 +200,7 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
         fig.savefig(Path(out_folder, 'plot_{0}.pdf'.format(model_name)), bbox_inches = 'tight')
         ax.set_yscale('log')
         fig.savefig(Path(out_folder, 'plot_log_{0}.pdf'.format(model_name)), bbox_inches = 'tight')
-        plt.close()
+        plt.close(fig)
     else:
         return fig
 
