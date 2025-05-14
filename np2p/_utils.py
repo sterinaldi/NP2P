@@ -33,7 +33,11 @@ def log_likelihood(x, DP):
     """
     Warning: sign inverted for optimisation
     """
-    return -(_log_likelihood(x, DP) + DP.log_prior(x[:-1]))
+    if DP.process == 'dirichlet':
+        log_prior = DP.log_prior(x[:-1])
+    elif DP.process == 'poisson':
+        log_prior = DP.log_prior(x)
+    return -(_log_likelihood(x, DP) + log_prior)
 
 def _log_likelihood(x, DP):
     if DP.process == 'dirichlet':
@@ -42,14 +46,13 @@ def _log_likelihood(x, DP):
         pars = x
     # Base distribution
     B  = DP.model(DP.current_bins, *pars)*DP.eval_selection_function
-    if not all(B > 0):
-        B[B == 0] = small_positive
+    if not all(B > small_positive):#0):
+        B[B < small_positive] = small_positive
+#        B[B == 0] = small_positive
     B /= np.sum(B)
     if DP.process == 'dirichlet':
         a  = np.exp(x[-1])*B.flatten()
-        # Normalisation constant
         lognorm = gammaln_jit(np.exp(x[-1])) - np.sum(gammaln_jit_vect(a))
-        # Likelihood
         logL    = np.sum(np.multiply(a-1., DP.log_q[DP.current_q])) + lognorm
     elif DP.process == 'poisson':
         # Counts
