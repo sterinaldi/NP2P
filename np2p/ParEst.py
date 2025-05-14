@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from pathlib import Path
 from tqdm import tqdm
-from scipy.optimize import minimize
+from scipy.optimize import minimize, dual_annealing
 from np2p._numba_functions import logsumexp_jit
 from np2p._utils import recursive_grid, log_likelihood, implemented_processes
 
@@ -45,12 +45,15 @@ class DirichletProcess:
                        model_name         = '',
                        process            = 'dirichlet',
                        verbose            = True,
+                       optimiser          = 'global',
+                       n_parallel         = 1,
                        ):
         self.model   = model
         self.draws   = draws
         if not process in implemented_processes:
             raise Exception(f'The {process} process is not implemented. Please choose between one of the following: '+', '.join(implemented_processes))
         self.process = process
+        self.optimiser = optimiser
         if self.process == 'dirichlet':
             if bounds is not None:
                 self.bounds = np.atleast_2d(bounds + [[np.log(min_alpha), np.log(max_alpha)]]).T
@@ -70,6 +73,7 @@ class DirichletProcess:
         self.out_folder = Path(out_folder)
         self.out_folder.mkdir(exist_ok = True)
         self.verbose = verbose
+        self.n_parallel = int(n_parallel)
         # Bins
         if bins is not None:
             self.fixed_bins = False
@@ -154,7 +158,13 @@ class DirichletProcess:
                     self.eval_selection_function = self.selection_function(self.current_bins).flatten()
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", message="invalid value encountered in subtract")
-                self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
+                try:
+                    if self.optimiser == 'local':
+                        self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
+                    elif self.optimiser == 'global':
+                        self.samples.append(dual_annealing(log_likelihood, args = [self], bounds = list(np.atleast_2d(self.bounds).T)).x)
+                except:
+                    pass
             if self.process == 'dirichlet':
                 self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q]
         self.samples = np.array(self.samples)
