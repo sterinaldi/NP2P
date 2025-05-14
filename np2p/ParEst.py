@@ -1,10 +1,10 @@
 import numpy as np
 import warnings
+from multiprocessing import Pool
 from pathlib import Path
 from tqdm import tqdm
-from scipy.optimize import minimize, dual_annealing
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood, implemented_processes
+from np2p._utils import recursive_grid, log_likelihood, implemented_processes, uniform_prior, _run_single
 
 class DirichletProcess:
     """
@@ -126,7 +126,7 @@ class DirichletProcess:
         if not callable(log_prior) and log_prior is not None:
             raise Exception('log_prior must be callable or None')
         if log_prior is None:
-            self.log_prior = lambda x: 0.
+            self.log_prior = uniform_prior
         else:
             self.log_prior = log_prior
         # Evaluate draws
@@ -147,30 +147,16 @@ class DirichletProcess:
     def run(self, verbose = None):
         if verbose is None:
             verbose = self.verbose
-        self.samples = []
-        for i in tqdm(range(len(self.log_q)), desc = 'Sampling', disable = not(verbose)):
-            self.current_q = i
-            if not self.fixed_bins:
-                self.current_bins = self.bins[self.current_q]
-                if self.selection_function is None:
-                    self.eval_selection_function = np.ones(np.shape(self.current_bins)).flatten()
-                else:
-                    self.eval_selection_function = self.selection_function(self.current_bins).flatten()
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="invalid value encountered in subtract")
-                try:
-                    if self.optimiser == 'local':
-                        self.samples.append(minimize(log_likelihood, np.mean(self.bounds.T, axis = 1), args = (self), bounds = self.bounds.T).x)
-                    elif self.optimiser == 'global':
-                        self.samples.append(dual_annealing(log_likelihood, args = [self], bounds = list(np.atleast_2d(self.bounds).T)).x)
-                except:
-                    pass
-            if self.process == 'dirichlet':
-                self.samples[-1][-1] = np.exp(self.samples[-1][-1])/self.N[self.current_q]
-        self.samples = np.array(self.samples)
+        if self.n_parallel == 1:
+            samples = [_run_single((self, i)) for i in tqdm(range(len(self.log_q)), desc = 'Sampling', disable = not(verbose))]
+        else:
+            pool    = Pool(processes = self.n_parallel)
+            samples = tqdm(pool.imap_unordered(_run_single, [(self, i) for i in np.arange(len(self.log_q))], chunksize = len(self.log_q)//self.n_parallel), desc = 'Sampling', disable = not(verbose), total = len(self.log_q))
+        self.samples = np.array([si for si in samples if si is not None])
         # Save data
         if self.process == 'dirichlet':
             all_names = self.names + ['beta_DP']
         else:
             all_names = self.names
         np.savetxt(Path(self.out_folder, 'posterior_samples_{}.txt'.format(self.model_name)), self.samples, header = ' '.join(all_names))
+
