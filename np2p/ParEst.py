@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from tqdm import tqdm
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood, implemented_processes, uniform_prior, _run_single
+from np2p._utils import recursive_grid, log_likelihood, implemented_processes, uniform_prior, _run_single, min_bins
 
 class DirichletProcess:
     """
@@ -100,12 +100,12 @@ class DirichletProcess:
                 self.n_bins_dim = np.array(n_bins)
             else:
                 if n_data is not None:
-                    self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.sqrt(n_data)/self.n_dims)
+                    self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.max([np.sqrt(n_data), min_bins])/self.n_dims)
                     self.n_data     = n_data
                 else:
                     try:
                         # If FIGARO, use stored number of samples
-                        self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.sqrt(self.draws[0].n_pts)/self.n_dims)
+                        self.n_bins_dim = np.ones(self.n_dims, dtype = int)*int(np.max([np.sqrt(self.draws[0].n_pts), min_bins])/self.n_dims)
                         self.n_data     = self.draws[0].n_pts
                     except AttributeError:
                         raise Exception('Please provide either n_data or n_bins')
@@ -151,7 +151,7 @@ class DirichletProcess:
             samples = [_run_single((self, i)) for i in tqdm(range(len(self.log_q)), desc = 'Sampling', disable = not(verbose))]
         else:
             pool    = Pool(processes = self.n_parallel)
-            samples = tqdm(pool.imap_unordered(_run_single, [(self, i) for i in np.arange(len(self.log_q))], chunksize = len(self.log_q)//self.n_parallel), desc = 'Sampling', disable = not(verbose), total = len(self.log_q))
+            samples = tqdm(pool.imap_unordered(_run_single, [(self, i) for i in np.arange(len(self.log_q))], chunksize = 1), desc = 'Sampling', disable = not(verbose), total = len(self.log_q))
         self.samples = np.array([si for si in samples if si is not None])
         # Save data
         if self.process == 'dirichlet':
