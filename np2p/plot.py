@@ -109,7 +109,8 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
              hist_bin_factor = int(np.sqrt(len(samples)))/20,
              quiet           = True,
              )
-        fig.axes[0].axvline(truths[0])
+        if truths is not None:
+            fig.axes[0].axvline(truths[0])
     if save:
         if model_name is None:
             fig.savefig(Path(out_folder, 'joint_posterior.pdf'), bbox_inches = 'tight')
@@ -119,7 +120,7 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     else:
         return fig
 
-def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, out_folder = '.', model_name = 'model', colors_data = ['steelblue','darkturquoise','mediumturquoise'], colors_inferred = ['orangered', 'darksalmon', 'lightsalmon'], label_data = '\\mathrm{Data}', label_model = '\\mathrm{Model}', save = True):
+def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, out_folder = '.', model_name = 'model', colors_data = ['steelblue','darkturquoise','mediumturquoise'], colors_inferred = ['orangered', 'darksalmon', 'lightsalmon'], label_data = '\\mathrm{Data}', label_model = '\\mathrm{Model}', save = True, selection_function = None):
     """
     Plot a 1D distribution of both the reconstructed distribution and the inferred parametric distribution
 
@@ -153,6 +154,11 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
         q = np.atleast_2d(draws)
         if not len(q[0]) == len(bins):
             raise Exception('The number of bins and the number of evaluated points in draws does not match')
+    if selection_function is not None:
+        selfunc = selection_function(bins)
+    else:
+        selfunc = np.ones(len(bins))
+    
     # Percentiles
     p = {}
     for perc in percentiles:
@@ -175,7 +181,7 @@ def plot_comparison_1d(bins, draws, model, samples, label = 'x', unit = None, ou
     # Percentiles
     p_par = {}
     for perc in percentiles:
-        p_par[perc] = np.percentile(q_par, perc, axis = 0)
+        p_par[perc] = np.percentile(q_par*selfunc, perc, axis = 0)
     norm = np.sum(p_par[50]*(bins[1]-bins[0]))
     for perc in percentiles:
         p_par[perc] /= norm
