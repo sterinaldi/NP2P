@@ -70,7 +70,7 @@ def _log_likelihood(x, DP, current_q, selfunc):
     elif DP.process == 'poisson':
         pars = x
     # Base distribution
-    B  = DP.model(DP.current_bins, *pars)*DP.eval_selection_function
+    B  = np.multiply(DP.model(DP.current_bins, *pars), DP.eval_selection_function)
     if not all(B > small_positive):
         B[B < small_positive] = small_positive
     B /= np.sum(B)
