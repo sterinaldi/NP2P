@@ -14,8 +14,8 @@ packages = ['np2p']
 [project]
 name = 'NP2P'
 description = 'Parameter Estimation from Non-parametric Inference'
-version = '0.2.0'
-requires-python = '< 3.12'
+version = '0.2.1'
+requires-python = '< 3.15'
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = ['non-parametric', 'parameter estimation', 'inference', 'nested sampling']
@@ -45,7 +45,6 @@ dependencies = [
     "matplotlib != 3.6.3",
     "corner",
     "numba",
-    "raynest",
     ]
 
 [project.urls]
