@@ -44,7 +44,7 @@ def nicer_hist(func):
 
 plt.hist = nicer_hist(plt.hist)
 
-def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.'):
+def plot_posterior(samples, labels = None, truths = None, save = True, model_name = None, out_folder = '.', no_beta = False):
     """
     Corner plot of the posterior samples
     
@@ -55,6 +55,7 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
         np.ndarray truths: true values of parameters (if known)
         bool save: whether to save the plot
         str or Path out_folder: output folder
+        bool no_beta: exclude beta parameter (DP) from corner plot
     
     Returns:
         plt.figure: figure
@@ -87,6 +88,13 @@ def plot_posterior(samples, labels = None, truths = None, save = True, model_nam
     for i, s in enumerate(samples):
         if len(set(s)) == 1:
             samples[i] += np.random.uniform(-samples[i]/100,samples[i]/100, size = len(samples[i]))
+    # If beta is not desired, remove relevant samples, labels and true value
+    if no_beta:
+        samples = samples[:,:-1]
+        if labels is not None:
+            labels = labels[:-1]
+        if truths is not None:
+            truths = truths[:-1]
     # Corner plot
     if samples.shape[-1] > 1 and truths is not None:
         fig = corner(samples,
