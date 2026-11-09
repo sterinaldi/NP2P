@@ -4,7 +4,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from tqdm import tqdm
 from np2p._numba_functions import logsumexp_jit
-from np2p._utils import recursive_grid, log_likelihood, implemented_processes, uniform_prior, _run_single, min_bins
+from np2p._utils import recursive_grid, log_likelihood, implemented_processes, uniform_prior, _run_single, min_bins, small_positive
 
 class DirichletProcess:
     """
@@ -122,7 +122,7 @@ class DirichletProcess:
             if self.selection_function is not None:
                 self.eval_selection_function = self.selection_function(self.bins).flatten()
             else:
-                self.eval_selection_function = np.ones(np.shape(self.bins)).flatten()
+                self.eval_selection_function = np.ones(np.shape(self.bins)[0]).flatten()
         if not callable(log_prior) and log_prior is not None:
             raise Exception('log_prior must be callable or None')
         if log_prior is None:
@@ -133,9 +133,9 @@ class DirichletProcess:
         if hasattr(draws[0], 'logpdf'):
             self.log_q = np.atleast_2d([d.logpdf(self.bins) for d in draws])
         elif hasattr(draws[0], 'pdf'):
-            self.log_q = np.atleast_2d([np.log(d.pdf(self.bins)) for d in draws])
+            self.log_q = np.atleast_2d([np.nan_to_num(np.log(d.pdf(self.bins)), neginf = small_positive) for d in draws])
         elif callable(draws[0]):
-            self.log_q = np.atleast_2d([np.log(d(self.bins)) for d in draws])
+            self.log_q = np.atleast_2d([np.nan_to_num(np.log(d(self.bins)), neginf = small_positive) for d in draws])
         elif isinstance(draws[0], (list, np.ndarray, float)):
             if bins is None:
                 raise Exception('Please provide both bins and evaluated logpdf')
